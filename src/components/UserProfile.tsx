@@ -1,3 +1,7 @@
+'use client';
+
+import { useAuth } from '../hooks/useAuth';
+
 export default function UserProfile() {
   const { user, logout, isAuthenticated } = useAuth();
 
@@ -5,7 +9,9 @@ export default function UserProfile() {
 
   return (
     <div className="profile">
-      <img src={user?.picture} alt={user?.name} />
+      {user?.picture && (
+        <img src={user.picture} alt={user?.name || 'User'} />
+      )}
       <h2>{user?.name}</h2>
       <p>{user?.email}</p>
       <button onClick={logout}>Log Out</button>

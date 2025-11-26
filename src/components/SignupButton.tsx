@@ -7,7 +7,7 @@ export default function SignupButton() {
   const handleSignup = () => {
     loginWithRedirect({
       authorizationParams: {
-        redirect_uri: 'http://localhost:3000/api/auth/callback',
+        redirect_uri: `${window.location.origin}/auth/callback`,
         screen_hint: 'signup' // This tells Auth0 to show the signup form
       },
       appState: {
