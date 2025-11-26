@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========= ENUMS =========
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ActivityType {
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_STATUS_CHANGED
+  TASK_ASSIGNED
+  PROJECT_CREATED
+  PROJECT_ARCHIVED
+}
+
+// ========= MODELS =========
+
+// Auth0-backed user (no password stored here).
+model User {
+  id        String   @id @default(uuid())
+  auth0Id   String   @unique   // e.g. "auth0|xxx" or "google-oauth2|xxx"
+  email     String   @unique
+  name      String?
+  picture   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspacesOwned Workspace[]      @relation("WorkspacesOwned")
+  memberships     WorkspaceMember[]
+  tasksCreated    Task[]           @relation("TasksCreated")
+  tasksAssigned   Task[]           @relation("TasksAssigned")
+  activityLogs    ActivityLog[]    @relation("UserActivityLogs")
+}
+
+// Workspace = personal or team space.
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  ownerId   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner        User          @relation("WorkspacesOwned", fields: [ownerId], references: [id])
+  members      WorkspaceMember[]
+  projects     Project[]
+  activityLogs ActivityLog[]
+
+  @@index([ownerId])
+}
+
+// Join table: user is member of workspace with a specific role.
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+
+  createdAt   DateTime      @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+// Project inside a workspace.
+model Project {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  description String?
+  archived    Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  tasks       Task[]
+  activityLogs ActivityLog[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+// Task under a project.
+model Task {
+  id            String        @id @default(uuid())
+  projectId     String
+  title         String
+  description   String?
+  status        TaskStatus    @default(TODO)
+  priority      TaskPriority  @default(MEDIUM)
+  dueDate       DateTime?
+  orderIndex    Int?          // for ordering in lists/boards
+
+  createdById   String?
+  assignedToId  String?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  project       Project       @relation(fields: [projectId], references: [id])
+
+  createdBy     User?         @relation("TasksCreated",  fields: [createdById],  references: [id])
+  assignedTo    User?         @relation("TasksAssigned", fields: [assignedToId], references: [id])
+
+  subtasks      Subtask[]
+  activityLogs  ActivityLog[]
+
+  @@index([projectId])
+  @@index([assignedToId])
+  @@index([dueDate])
+  @@unique([projectId, orderIndex])
+}
+
+// Subtasks for breaking down a big task.
+model Subtask {
+  id          String     @id @default(uuid())
+  taskId      String
+  title       String
+  isCompleted Boolean    @default(false)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  task        Task       @relation(fields: [taskId], references: [id])
+
+  @@index([taskId])
+}
+
+// Activity log for “Recent Activity” and auditing.
+model ActivityLog {
+  id          String       @id @default(uuid())
+  workspaceId String
+  projectId   String?
+  taskId      String?
+  userId      String?
+
+  type        ActivityType
+  message     String?
+  payload     Json?
+
+  createdAt   DateTime     @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  project     Project?  @relation(fields: [projectId], references: [id])
+  task        Task?     @relation(fields: [taskId], references: [id])
+  user        User?     @relation("UserActivityLogs", fields: [userId], references: [id])
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([taskId])
+  @@index([userId])
+  @@index([workspaceId, createdAt])
+}
