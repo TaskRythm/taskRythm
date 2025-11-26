@@ -1,18 +1,21 @@
+// src/hooks/useAuth.ts
 import { useAuth0 } from '@auth0/auth0-react';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 export const useAuth = () => {
-  const { 
-    user, 
-    isAuthenticated, 
-    isLoading, 
-    loginWithRedirect, 
+  const {
+    user,
+    isAuthenticated,
+    isLoading,
+    loginWithRedirect,
     logout,
-    getAccessTokenSilently 
+    getAccessTokenSilently,
   } = useAuth0();
 
   const callApi = async (endpoint: string) => {
     const token = await getAccessTokenSilently();
-    const response = await fetch(`http://localhost:4000/${endpoint}`, {
+    const response = await fetch(`${API_BASE}/${endpoint}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -24,8 +27,21 @@ export const useAuth = () => {
     user,
     isAuthenticated,
     isLoading,
-    login: () => loginWithRedirect(),
-    logout: () => logout({ returnTo: window.location.origin }),
+    login: () =>
+      loginWithRedirect({
+        authorizationParams: {
+          redirect_uri: `${window.location.origin}/auth/callback`,
+        },
+        appState: {
+          returnTo: '/',
+        },
+      }),
+    logout: () =>
+      logout({
+        logoutParams: {
+          returnTo: window.location.origin,
+        },
+      }),
     callApi,
   };
 };

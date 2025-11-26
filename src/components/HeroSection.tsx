@@ -7,7 +7,7 @@ export default function HeroSection() {
   const handleFreeTrial = () => {
     loginWithRedirect({
       authorizationParams: {
-        redirect_uri: 'http://localhost:3000/api/auth/callback',
+        redirect_uri: `${window.location.origin}/auth/callback`,
         screen_hint: 'signup'
       },
       appState: {

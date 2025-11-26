@@ -10,23 +10,23 @@ export default function Navigation() {
   const handleLogin = () => {
     loginWithRedirect({
       authorizationParams: {
-        redirect_uri: 'http://localhost:3000/api/auth/callback'
+        redirect_uri: `${window.location.origin}/auth/callback`,
       },
       appState: {
-        returnTo: '/'
-      }
+        returnTo: '/',
+      },
     });
   };
 
   const handleSignup = () => {
     loginWithRedirect({
       authorizationParams: {
-        redirect_uri: 'http://localhost:3000/api/auth/callback',
-        screen_hint: 'signup'
+        redirect_uri: `${window.location.origin}/auth/callback`,
+        screen_hint: 'signup',
       },
       appState: {
-        returnTo: '/'
-      }
+        returnTo: '/',
+      },
     });
   };
 
