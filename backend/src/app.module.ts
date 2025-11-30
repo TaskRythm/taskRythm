@@ -9,6 +9,8 @@ import { JwtAuthGuard } from './auth/jwt.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { ProjectsModule } from './projects/projects.module';
+import { TasksModule } from './tasks/tasks.module';  
+import { ActivityModule } from './activity/activity.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { ProjectsModule } from './projects/projects.module';
     PrismaModule,
     WorkspacesModule,
     ProjectsModule,
+    TasksModule,
+    ActivityModule,
   ],
   controllers: [AppController],
   providers: [
