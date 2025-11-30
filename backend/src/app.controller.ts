@@ -18,10 +18,10 @@ export class AppController {
   }
 
   // RBAC-protected route
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @Permissions('read:projects')
-  @Get('projects')
-  listProjects() {
-    return [{ id: 1, name: 'Sample' }];
-  }
+  // @UseGuards(JwtAuthGuard, PermissionsGuard)
+  // @Permissions('read:projects')
+  // @Get('projects')
+  // listProjects() {
+  //   return [{ id: 1, name: 'Sample' }];
+  // }
 }
