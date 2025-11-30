@@ -9,12 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@auth0/auth0-react": "^2.8.0",
+    "@auth0/auth0-react": "^2.9.0",
+    "@auth0/nextjs-auth0": "^2.7.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
+    "lucide-react": "^0.555.0",
     "next": "16.0.1",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

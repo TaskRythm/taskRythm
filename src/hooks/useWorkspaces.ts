@@ -1,85 +1,122 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from './useAuth';
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  useWorkspaceStore,
+  WorkspaceMembership,
+  WorkspaceRole,
+} from "@/store/workspaceStore";
+import { fetchWorkspaces, createWorkspace } from "@/api/workspaces";
 
-export interface WorkspaceDto {
-  workspaceId: string;
-  role: string;
-  workspace: {
-    id: string;
-    name: string;
-    slug: string;
-    description?: string | null;
-    createdAt: string;
-    updatedAt: string;
-  };
-}
+function normalizeList(items: any[]): WorkspaceMembership[] {
+  if (!Array.isArray(items)) return [];
 
-export interface CreateWorkspacePayload {
-  name: string;
-  description?: string;
+  return items.map((item: any) => {
+    // Case 1: backend returns membership { workspaceId, role, workspace: {...} }
+    if (item.workspace) {
+      return {
+        workspaceId: item.workspaceId ?? item.workspace.id,
+        role: (item.role as WorkspaceRole) ?? "OWNER",
+        workspace: {
+          id: item.workspace.id,
+          name: item.workspace.name,
+          slug: item.workspace.slug,
+          createdAt: item.workspace.createdAt ?? new Date().toISOString(),
+        },
+      };
+    }
+
+    // Case 2: backend returns plain workspace { id, name, slug, createdAt }
+    return {
+      workspaceId: item.id,
+      role: (item.role as WorkspaceRole) ?? "OWNER",
+      workspace: {
+        id: item.id,
+        name: item.name,
+        slug: item.slug,
+        createdAt: item.createdAt ?? new Date().toISOString(),
+      },
+    };
+  });
 }
 
 export function useWorkspaces() {
   const { callApi, isAuthenticated } = useAuth();
+  const {
+    workspaces,
+    activeWorkspaceId,
+    setWorkspaces,
+    setActiveWorkspace,
+    loading,
+    setLoading,
+    creating,
+    setCreating,
+    error,
+    setError,
+  } = useWorkspaceStore();
 
-  const [data, setData] = useState<WorkspaceDto[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchWorkspaces = useCallback(async () => {
+  const load = async () => {
     if (!isAuthenticated) return;
-    setLoading(true);
-    setError(null);
+
     try {
-      const res = await callApi('workspaces'); // GET /workspaces
-      setData(res);
+      setLoading(true);
+      const raw = await fetchWorkspaces(callApi);
+      const normalized = normalizeList(raw);
+
+      setWorkspaces(normalized);
+
+      // Auto-select first workspace if nothing selected yet
+      if (!activeWorkspaceId && normalized.length > 0) {
+        setActiveWorkspace(normalized[0].workspaceId);
+      }
+
+      setError(null);
     } catch (err: any) {
-      console.error('Failed to fetch workspaces', err);
-      setError(err?.message ?? 'Failed to load workspaces');
+      console.error("Failed to load workspaces", err);
+      setError(err?.message || "Failed to load workspaces");
     } finally {
       setLoading(false);
     }
-  }, [callApi, isAuthenticated]);
+  };
 
-  const createWorkspace = useCallback(
-    async (payload: CreateWorkspacePayload) => {
-      if (!isAuthenticated) return null;
+  const newWorkspace = async (body: { name: string; description?: string }) => {
+    try {
       setCreating(true);
-      setError(null);
-      try {
-        const res = await callApi('workspaces', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        await fetchWorkspaces();
-        return res.workspace;
-      } catch (err: any) {
-        console.error('Failed to create workspace', err);
-        setError(err?.message ?? 'Failed to create workspace');
-        return null;
-      } finally {
-        setCreating(false);
+      const ws = await createWorkspace(callApi, body);
+      const [membership] = normalizeList([ws]);
+
+      const next = [...workspaces, membership];
+      setWorkspaces(next);
+
+      // If this is the first workspace, auto-select it
+      if (!activeWorkspaceId) {
+        setActiveWorkspace(membership.workspaceId);
       }
-    },
-    [callApi, fetchWorkspaces, isAuthenticated],
-  );
+
+      setError(null);
+    } catch (err: any) {
+      console.error("Failed to create workspace", err);
+      setError(err?.message || "Failed to create workspace");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   useEffect(() => {
-    fetchWorkspaces();
-  }, [fetchWorkspaces]);
+    if (isAuthenticated) {
+      void load();
+    }
+  }, [isAuthenticated]);
 
   return {
-    workspaces: data,
+    workspaces,
     loading,
     creating,
     error,
-    refetch: fetchWorkspaces,
-    createWorkspace,
+    activeWorkspaceId,
+    setActiveWorkspace,
+    createWorkspace: newWorkspace,
+    reload: load,
   };
 }
