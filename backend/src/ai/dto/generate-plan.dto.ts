@@ -1,5 +1,7 @@
 import { IsString, IsNotEmpty, MinLength, MaxLength } from 'class-validator';
 
+
+// this is for the dto for generating a project plan based on a prompt
 export class GeneratePlanDto {
     @IsString()
     @IsNotEmpty()
@@ -8,10 +10,13 @@ export class GeneratePlanDto {
     prompt: string;
 }
 
+
+// this is for refining a task title (like breaking it down into subtasks)
 export class RefineTaskDto {
-    @IsString()
-    @IsNotEmpty()
-    taskTitle: string;
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  taskTitle: string;
 }
 
 

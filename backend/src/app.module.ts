@@ -28,11 +28,10 @@ import { AiModule } from './ai/ai.module';
   providers: [
     JwtStrategy,
     PermissionsGuard,
-    // 👇 COMMENT THIS BLOCK OUT FOR TESTING 👇
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: JwtAuthGuard,
-    // },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}

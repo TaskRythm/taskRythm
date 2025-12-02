@@ -1,14 +1,22 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AiService } from './ai.service';
-// import { JwtAuthGuard } from '../auth/jwt.guard'; // 👈 Commented out
+import { GeneratePlanDto, RefineTaskDto } from './dto/generate-plan.dto';
+import { JwtAuthGuard } from '../auth/jwt.guard'; // Ensure this path is correct based on your folder structure
 
 @Controller('ai')
-// @UseGuards(JwtAuthGuard) // 👈 Commented out (This is the most important one)
+@UseGuards(JwtAuthGuard) // 🔒 SECURITY IS ON
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @Post('generate-plan')
-  async generatePlan(@Body() body: any) { // Changed to 'any' to avoid DTO errors for now
-    return this.aiService.generateProjectPlan(body.prompt);
+  @UsePipes(new ValidationPipe())
+  async generatePlan(@Body() dto: GeneratePlanDto) {
+    return this.aiService.generateProjectPlan(dto.prompt);
+  }
+
+  @Post('refine-task')
+  @UsePipes(new ValidationPipe())
+  async refineTask(@Body() dto: RefineTaskDto) {
+    return this.aiService.refineTask(dto.taskTitle);
   }
 }

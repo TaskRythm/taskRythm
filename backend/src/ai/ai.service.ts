@@ -10,7 +10,7 @@ export class AiService {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
   }
 
-  // Helper to clean up Markdown
+  // Helper to clean up Markdown (```json ... ```)
   private cleanJson(text: string): any {
     try {
       const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -23,67 +23,56 @@ export class AiService {
 
   // Feature 1: Generate Project Plan
   async generateProjectPlan(userPrompt: string) {
-    this.logger.log(`Generating plan with Gemini for: ${userPrompt}`);
-    
+    this.logger.log(`Generating plan for: ${userPrompt}`);
     try {
-      // 👇 FIX: Use the model explicitly listed in your screenshot
       const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
       const prompt = `
         You are an expert Project Manager. 
-        Analyze the user's request: "${userPrompt}".
-        Break it down into 5 to 8 concrete tasks.
-        
-        You MUST output ONLY raw JSON. Do not write any introduction.
-        
-        JSON Schema:
-        {
-          "tasks": [
-            { 
-              "title": "Actionable Title", 
-              "description": "Brief description", 
-              "status": "TODO", 
-              "priority": "MEDIUM" 
-            }
-          ]
-        }
+        Analyze: "${userPrompt}". Break it down into 5-8 concrete tasks.
+        Output ONLY raw JSON.
+        JSON Schema: { "tasks": [{ "title": "String", "description": "String", "status": "TODO", "priority": "MEDIUM" }] }
       `;
-
       const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      
-      return this.cleanJson(text);
-      
+      return this.cleanJson(result.response.text());
     } catch (error) {
-      this.logger.error('Gemini API Error', error);
+      this.logger.error('Generate Plan Error', error);
       throw new InternalServerErrorException('AI Service Failed');
     }
   }
 
-  // Feature 2: Task Refiner
+  //  FEATURE 2: TASK REFINER (The New Part) 
   async refineTask(taskTitle: string) {
+    this.logger.log(`Refining task: ${taskTitle}`);
+
     try {
-      // 👇 FIX: Use the same model here
       const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
       const prompt = `
+        You are a Senior Technical Lead.
         Refine this vague task title: "${taskTitle}".
+        
+        Requirements:
+        1. Rename it to be professional and actionable.
+        2. Write a clear description (max 2 sentences).
+        3. Create 3 concrete subtasks (checklist).
+        4. Assign a Priority (LOW, MEDIUM, HIGH, CRITICAL).
+        5. Suggest 2 Tags (e.g., Bug, Feature, DevOps).
+
         Output ONLY raw JSON.
         
         JSON Schema:
         { 
-          "suggestedTitle": "Professional Title", 
-          "description": "Clear description", 
-          "subtasks": ["Step 1", "Step 2", "Step 3"] 
+          "suggestedTitle": "String", 
+          "description": "String", 
+          "subtasks": ["String", "String", "String"],
+          "priority": "String",
+          "tags": ["String", "String"]
         }
       `;
 
       const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      return this.cleanJson(result.response.text());
 
-      return this.cleanJson(text);
     } catch (error) {
       this.logger.error('Refine Task Error', error);
       throw new InternalServerErrorException('Failed to refine task');
