@@ -165,4 +165,48 @@ export class AiService {
       throw new InternalServerErrorException('Failed to generate report');
     }
   }
+
+  // Feature 5: The Project Brain (Context-Aware Chat)
+  async chatWithProject(question: string, tasks: any[]) {
+    this.logger.log(`Chatting with project context: ${tasks.length} tasks`);
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // 1. Create the Context (The "Pile of Papers")
+      const projectContext = tasks.map(t => 
+        `- Title: "${t.title}", Status: ${t.status}, Priority: ${t.priority}`
+      ).join('\n');
+
+      // 2. The "Silo" Prompt
+      const prompt = `
+        You are the AI Project Manager for this specific project.
+        
+        CONTEXT (Real-time Project Data):
+        ${projectContext}
+
+        USER QUESTION: "${question}"
+
+        INSTRUCTIONS:
+        1. Answer based ONLY on the context provided above.
+        2. If the user asks about something not in the list, say "I cannot answer that based on the current project data."
+        3. Be concise and professional.
+        4. Output JSON format.
+
+        JSON Schema:
+        {
+          "answer": "String" // Your helpful response
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      return this.cleanJson(result.response.text());
+
+    } catch (error) {
+      this.logger.error('Project Brain Error', error);
+      throw new InternalServerErrorException('Failed to chat with project');
+    }
+  }
+
+  
 }

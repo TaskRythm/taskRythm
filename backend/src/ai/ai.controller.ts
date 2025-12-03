@@ -2,7 +2,8 @@ import { Body, Controller, Post, UseGuards, UsePipes, ValidationPipe } from '@ne
 import { AiService } from './ai.service';
 import { GeneratePlanDto, RefineTaskDto } from './dto/generate-plan.dto';
 import { AnalyzeProjectDto } from './dto/analyze-project.dto'; 
-import { WriteReportDto } from './dto/write-report.dto'; //
+import { WriteReportDto } from './dto/write-report.dto'; 
+import { ChatDto } from './dto/chat.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard'; 
 
 @Controller('ai')
@@ -36,5 +37,12 @@ export class AiController {
   @UsePipes(new ValidationPipe())
   async writeReport(@Body() dto: WriteReportDto) {
     return this.aiService.writeReleaseNotes(dto.tasks);
+  }
+
+  // Feature 5: The Project Brain
+  @Post('chat')
+  @UsePipes(new ValidationPipe())
+  async chatWithProject(@Body() dto: ChatDto) {
+    return this.aiService.chatWithProject(dto.question, dto.tasks);
   }
 }
