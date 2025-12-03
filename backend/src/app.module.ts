@@ -9,13 +9,15 @@ import { JwtAuthGuard } from './auth/jwt.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { ProjectsModule } from './projects/projects.module';
-import { TasksModule } from './tasks/tasks.module';  
+import { TasksModule } from './tasks/tasks.module';
 import { ActivityModule } from './activity/activity.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    AiModule,
     PrismaModule,
     WorkspacesModule,
     ProjectsModule,
