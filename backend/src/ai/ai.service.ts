@@ -86,13 +86,13 @@ export class AiService {
     try {
       const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-      // 1. Sanitize Data (Privacy & Token Efficiency)
+      // Sanitize Data (Privacy & Token Efficiency)
       // We convert the array to a simple string to save tokens
       const projectSnapshot = tasks.map(t => 
         `- [${t.status}] [${t.priority}] ${t.title}`
       ).join('\n');
 
-      // 2. The "Project Doctor" Prompt
+      // The "Project Doctor" Prompt
       const prompt = `
         You are a Senior Agile Project Manager and Risk Analyst.
         Analyze this project snapshot (Kanban Board):
@@ -122,6 +122,47 @@ export class AiService {
     } catch (error) {
       this.logger.error('Analyze Project Error', error);
       throw new InternalServerErrorException('Failed to analyze project');
+    }
+  }
+
+  // Feature 4: My Writing Partner (Release Notes Generator)
+  async writeReleaseNotes(tasks: any[]) {
+    this.logger.log(`Generating release notes for ${tasks.length} tasks`);
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // Convert tasks to a text list
+      const taskList = tasks.map(t => `- ${t.title} (${t.tag || 'General'})`).join('\n');
+
+      // The "Technical Writer" Prompt
+      const prompt = `
+        You are a Senior Technical Writer.
+        Draft a professional "Sprint Release Report" based on these completed tasks:
+        
+        ${taskList}
+
+        Requirements:
+        1. Categorize the tasks smartly (e.g., "✨New Features", "🐛 Bug Fixes", "🔧 Improvements").
+        2. Write a short, exciting "Executive Summary" (2 sentences).
+        3. Use Markdown formatting for the main content.
+        
+        Output ONLY raw JSON.
+        
+        JSON Schema:
+        { 
+          "versionTitle": "String", // e.g. "Sprint 4: The Security Update"
+          "executiveSummary": "String",
+          "markdownContent": "String" // The full formatted report
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      return this.cleanJson(result.response.text());
+
+    } catch (error) {
+      this.logger.error('Writing Partner Error', error);
+      throw new InternalServerErrorException('Failed to generate report');
     }
   }
 }
