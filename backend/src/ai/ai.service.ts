@@ -78,4 +78,50 @@ export class AiService {
       throw new InternalServerErrorException('Failed to refine task');
     }
   }
+
+  // Feature 3: Project Health Doctor
+  async analyzeProjectHealth(tasks: any[]) {
+    this.logger.log(`Analyzing project health for ${tasks.length} tasks`);
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // 1. Sanitize Data (Privacy & Token Efficiency)
+      // We convert the array to a simple string to save tokens
+      const projectSnapshot = tasks.map(t => 
+        `- [${t.status}] [${t.priority}] ${t.title}`
+      ).join('\n');
+
+      // 2. The "Project Doctor" Prompt
+      const prompt = `
+        You are a Senior Agile Project Manager and Risk Analyst.
+        Analyze this project snapshot (Kanban Board):
+        
+        ${projectSnapshot}
+
+        Perform a health check based on these rules:
+        - Too many "HIGH" priority tasks in "TODO" is a risk.
+        - Too many "IN_PROGRESS" tasks at once suggests a bottleneck.
+        - Analyze TASK TITLES to identify technical debt or critical infrastructure risks.
+        - If mostly "DONE", the health is good.
+
+        Output ONLY raw JSON.
+        
+        JSON Schema:
+        { 
+          "score": number, // 0 to 100 (100 is perfect health)
+          "status": "String", // "Healthy", "At Risk", or "Critical"
+          "analysis": "String", // 1-2 sentences summarizing the situation
+          "recommendation": "String" // A specific action to fix the biggest problem
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      return this.cleanJson(result.response.text());
+
+    } catch (error) {
+      this.logger.error('Analyze Project Error', error);
+      throw new InternalServerErrorException('Failed to analyze project');
+    }
+  }
 }

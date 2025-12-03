@@ -1,22 +1,32 @@
 import { Body, Controller, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { GeneratePlanDto, RefineTaskDto } from './dto/generate-plan.dto';
-import { JwtAuthGuard } from '../auth/jwt.guard'; // Ensure this path is correct based on your folder structure
+import { AnalyzeProjectDto } from './dto/analyze-project.dto'; 
+import { JwtAuthGuard } from '../auth/jwt.guard'; 
 
 @Controller('ai')
-@UseGuards(JwtAuthGuard) // 🔒 SECURITY IS ON
+@UseGuards(JwtAuthGuard) // SECURITY IS ON
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
+  //  Feature 3: Generate Plan Endpoint
   @Post('generate-plan')
   @UsePipes(new ValidationPipe())
   async generatePlan(@Body() dto: GeneratePlanDto) {
     return this.aiService.generateProjectPlan(dto.prompt);
   }
 
+  //  Feature 2: Refine-Task Endpoint
   @Post('refine-task')
   @UsePipes(new ValidationPipe())
   async refineTask(@Body() dto: RefineTaskDto) {
     return this.aiService.refineTask(dto.taskTitle);
+  }
+
+  //  Feature 3: Project Doctor Endpoint
+  @Post('analyze-project')
+  @UsePipes(new ValidationPipe())
+  async analyzeProject(@Body() dto: AnalyzeProjectDto) {
+    return this.aiService.analyzeProjectHealth(dto.tasks);
   }
 }
