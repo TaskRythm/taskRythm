@@ -25,14 +25,14 @@ This document provides comprehensive documentation of the authentication testing
 
 ### Backend Tests
 - **Total Test Suites**: 6 passing
-- **Total Tests**: 25 passing
+- **Total Tests**: 24 passing
 - **Test Files**:
   - `jwt.strategy.spec.ts` (3 tests)
   - `jwt.guard.spec.ts` (3 tests)
   - `permissions.guard.spec.ts` (7 tests)
   - `permissions.decorator.spec.ts` (5 tests)
   - `current-user.decorator.spec.ts` (3 tests)
-  - `app.controller.spec.ts` (2 tests)
+  - `app.controller.spec.ts` (1 test)
 - **Test Coverage**: 
   - Auth module: 94.73%
   - Overall: 67.12%
@@ -52,7 +52,7 @@ This document provides comprehensive documentation of the authentication testing
 - **Test Execution Time**: ~2 seconds
 
 ### Combined Statistics
-- **Total Tests**: 45 tests
+- **Total Tests**: 44 tests
 - **Pass Rate**: 100%
 - **Total Execution Time**: ~4 seconds
 
@@ -165,8 +165,8 @@ This document provides comprehensive documentation of the authentication testing
 
 | Metric | Value |
 |--------|-------|
-| Total Test Cases | 45 |
-| Passing Tests | 45 (100%) |
+| Total Test Cases | 44 |
+| Passing Tests | 44 (100%) |
 | Backend Coverage | 67% overall, 95% auth module |
 | Frontend Coverage | 100% tested components |
 | Average Execution Time | 4 seconds |
@@ -371,7 +371,7 @@ Production deployment
 | | Passing Tests | 45 (100%) |
 | | Execution Time | ~4 seconds |
 | **Backend** | Test Suites | 6 |
-| | Total Tests | 25 |
+| | Total Tests | 24 |
 | | Coverage | 67% (95% auth module) |
 | **Frontend** | Test Suites | 4 |
 | | Total Tests | 20 |
@@ -396,10 +396,10 @@ approach, incorporating unit tests, integration tests, and end-to-end tests.
 
 ### Test Implementation
 
-A total of 45 automated tests were implemented across the backend and 
+A total of 44 automated tests were implemented across the backend and 
 frontend applications:
 
-- **Backend**: 25 tests covering JWT validation, permission guards, and 
+- **Backend**: 24 tests covering JWT validation, permission guards, and 
   authentication decorators
 - **Frontend**: 20 tests covering authentication components, hooks, and 
   user interactions
@@ -434,7 +434,7 @@ Test quality was ensured through:
 
 The authentication testing implementation for TaskRythm successfully demonstrates industry-standard testing practices with:
 
-- **45 passing tests** covering all critical authentication functionality
+- **44 passing tests** covering all critical authentication functionality
 - **100% pass rate** ensuring reliability
 - **High coverage** of authentication module (95%)
 - **Fast execution** suitable for continuous integration

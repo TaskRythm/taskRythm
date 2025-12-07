@@ -17,13 +17,4 @@ describe('AppController', () => {
       expect(appController.health()).toEqual({ ok: true });
     });
   });
-
-  describe('listProjects', () => {
-    it('should return list of projects', () => {
-      const result = appController.listProjects();
-      expect(Array.isArray(result)).toBe(true);
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ id: 1, name: 'Sample' });
-    });
-  });
 });

@@ -94,7 +94,9 @@ describe('useAuth Hook', () => {
 
     expect(mockLogout).toHaveBeenCalledTimes(1);
     expect(mockLogout).toHaveBeenCalledWith({
-      returnTo: 'http://localhost:3000',
+      logoutParams: {
+        returnTo: 'http://localhost:3000',
+      },
     });
   });
 
@@ -104,7 +106,9 @@ describe('useAuth Hook', () => {
 
     mockGetAccessTokenSilently.mockResolvedValue(mockToken);
     (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
       json: jest.fn().mockResolvedValue(mockResponse),
+      text: jest.fn().mockResolvedValue(''),
     });
 
     mockUseAuth0.mockReturnValue({
@@ -124,6 +128,7 @@ describe('useAuth Hook', () => {
       'http://localhost:4000/auth/me',
       {
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${mockToken}`,
         },
       }
@@ -135,7 +140,9 @@ describe('useAuth Hook', () => {
     const mockToken = 'mock-access-token';
     mockGetAccessTokenSilently.mockResolvedValue(mockToken);
     (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
       json: jest.fn().mockResolvedValue({}),
+      text: jest.fn().mockResolvedValue(''),
     });
 
     mockUseAuth0.mockReturnValue({

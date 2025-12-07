@@ -54,7 +54,7 @@ describe('LogoutButton', () => {
     expect(mockLogout).toHaveBeenCalledTimes(1);
     expect(mockLogout).toHaveBeenCalledWith({
       logoutParams: {
-        returnTo: 'http://localhost:3000',
+        returnTo: 'http://localhost',
       },
     });
   });

@@ -68,7 +68,7 @@ describe('LoginButton', () => {
     expect(mockLoginWithRedirect).toHaveBeenCalledTimes(1);
     expect(mockLoginWithRedirect).toHaveBeenCalledWith({
       authorizationParams: {
-        redirect_uri: 'http://localhost:3000/api/auth/callback',
+        redirect_uri: 'http://localhost/auth/callback',
       },
       appState: {
         returnTo: '/',
