@@ -1,3 +1,5 @@
+import { useAuth } from '@/hooks/useAuth';
+
 export default function UserProfile() {
   const { user, logout, isAuthenticated } = useAuth();
 
