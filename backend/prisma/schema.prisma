@@ -38,6 +38,14 @@ enum ActivityType {
   PROJECT_ARCHIVED
 }
 
+enum TaskType {
+  TASK
+  BUG
+  FEATURE
+  IMPROVEMENT
+  SPIKE
+}
+
 // ========= MODELS =========
 
 // Auth0-backed user (no password stored here).
@@ -67,8 +75,9 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner        User          @relation("WorkspacesOwned", fields: [ownerId], references: [id])
+  owner        User            @relation("WorkspacesOwned", fields: [ownerId], references: [id])
   members      WorkspaceMember[]
+  invites      WorkspaceInvite[]
   projects     Project[]
   activityLogs ActivityLog[]
 
@@ -103,8 +112,8 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
-  tasks       Task[]
+  workspace    Workspace   @relation(fields: [workspaceId], references: [id])
+  tasks        Task[]
   activityLogs ActivityLog[]
 
   @@unique([workspaceId, name])
@@ -115,12 +124,16 @@ model Project {
 model Task {
   id            String        @id @default(uuid())
   projectId     String
+  parentTaskId  String?       // For child tasks (one level deep)
   title         String
   description   String?
   status        TaskStatus    @default(TODO)
   priority      TaskPriority  @default(MEDIUM)
   dueDate       DateTime?
   orderIndex    Int?          // for ordering in lists/boards
+
+  estimateMinutes Int?
+  type           TaskType     @default(TASK)
 
   createdById   String?
   assignedToId  String?
@@ -129,6 +142,8 @@ model Task {
   updatedAt     DateTime      @updatedAt
 
   project       Project       @relation(fields: [projectId], references: [id])
+  parentTask    Task?         @relation("TaskChildren", fields: [parentTaskId], references: [id])
+  children      Task[]        @relation("TaskChildren")
 
   createdBy     User?         @relation("TasksCreated",  fields: [createdById],  references: [id])
   assignedTo    User?         @relation("TasksAssigned", fields: [assignedToId], references: [id])
@@ -138,6 +153,7 @@ model Task {
 
   @@index([projectId])
   @@index([assignedToId])
+  @@index([parentTaskId])
   @@index([dueDate])
   @@unique([projectId, orderIndex])
 }
@@ -157,7 +173,25 @@ model Subtask {
   @@index([taskId])
 }
 
-// Activity log for “Recent Activity” and auditing.
+model WorkspaceInvite {
+  id          String        @id @default(uuid())
+  workspaceId String
+  email       String
+  role        WorkspaceRole @default(MEMBER)
+  token       String        @unique
+  expiresAt   DateTime
+  createdAt   DateTime      @default(now())
+  acceptedAt  DateTime?
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([email])
+  @@index([token])
+}
+
+
+// Activity log for "Recent Activity" and auditing.
 model ActivityLog {
   id          String       @id @default(uuid())
   workspaceId String
