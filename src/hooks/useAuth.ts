@@ -13,35 +13,65 @@ export const useAuth = () => {
     getAccessTokenSilently,
   } = useAuth0();
 
-  const callApi = async (endpoint: string) => {
+  // Generic authenticated API helper
+  const callApi = async (
+    endpoint: string,
+    options: RequestInit = {}
+  ) => {
     const token = await getAccessTokenSilently();
-    const response = await fetch(`${API_BASE}/${endpoint}`, {
+
+    const url = endpoint.startsWith('http')
+      ? endpoint
+      : `${API_BASE}/${endpoint.replace(/^\//, '')}`;
+
+    const response = await fetch(url, {
+      ...options,
       headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
         Authorization: `Bearer ${token}`,
       },
     });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(
+        `API ${response.status} ${response.statusText}${
+          text ? ` – ${text}` : ''
+        }`,
+      );
+    }
+
+    // 204 No Content etc.
+    if (response.status === 204) return null;
+
     return response.json();
   };
+
+  // ✅ now takes an optional returnTo path
+  const login = (returnTo?: string) =>
+    loginWithRedirect({
+      authorizationParams: {
+        redirect_uri: `${window.location.origin}/auth/callback`,
+      },
+      appState: {
+        returnTo: returnTo ?? '/',
+      },
+    });
+
+  const logoutFn = () =>
+    logout({
+      logoutParams: {
+        returnTo: window.location.origin,
+      },
+    });
 
   return {
     user,
     isAuthenticated,
     isLoading,
-    login: () =>
-      loginWithRedirect({
-        authorizationParams: {
-          redirect_uri: `${window.location.origin}/auth/callback`,
-        },
-        appState: {
-          returnTo: '/',
-        },
-      }),
-    logout: () =>
-      logout({
-        logoutParams: {
-          returnTo: window.location.origin,
-        },
-      }),
+    login,
+    logout: logoutFn,
     callApi,
   };
 };
