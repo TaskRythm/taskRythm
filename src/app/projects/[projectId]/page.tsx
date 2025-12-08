@@ -1,10 +1,12 @@
-// src/app/projects/[projectId]/page.tsx
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { useWorkspaceStore } from "@/store/workspaceStore";
+import {
+  useWorkspaceStore,
+  type WorkspaceRole,
+} from "@/store/workspaceStore";
 import { useProjects } from "@/hooks/useProjects";
 import { useTasks } from "@/hooks/useTasks";
 
@@ -15,15 +17,7 @@ import type {
   TaskPriority,
 } from "@/api/tasks";
 
-import type { WorkspaceRole } from "@/store/workspaceStore";
-
 function formatDate(dateString?: string | null) {
-import { useWorkspaceStore } from "@/store/workspaceStore";
-import { useProjects } from "@/hooks/useProjects";
-import { useTasks } from "@/hooks/useTasks";
-import type { Task, TaskStatus } from "@/api/tasks";
-
-function formatDate(dateString?: string) {
   if (!dateString) return "";
   const d = new Date(dateString);
   if (Number.isNaN(d.getTime())) return "";
@@ -70,9 +64,6 @@ const PRIORITY_COLORS: Record<TaskPriority, string> = {
   MEDIUM: "#ff8b00",
   HIGH: "#de350b",
 };
-
-// Order of statuses in the Kanban board
-const STATUS_FLOW: TaskStatus[] = ["TODO", "IN_PROGRESS", "BLOCKED", "DONE"];
 
 export default function ProjectPage() {
   const params = useParams() as { projectId: string };
@@ -127,17 +118,15 @@ export default function ProjectPage() {
   const currentWorkspaceMembership = useMemo(
     () =>
       workspaces.find((w) => w.workspaceId === activeWorkspaceId) ?? null,
-    [workspaces, activeWorkspaceId]
+    [workspaces, activeWorkspaceId],
   );
 
   const currentRole: WorkspaceRole | null =
     currentWorkspaceMembership?.role ?? null;
 
-  const [editError, setEditError] = useState<string | null>(null);
-
   const project = useMemo(
     () => projects.find((p: any) => p.id === projectId),
-    [projects, projectId]
+    [projects, projectId],
   );
 
   const workspaceName = useMemo(() => {
@@ -151,7 +140,6 @@ export default function ProjectPage() {
     if (!projectsLoading && !project) {
       console.warn("Project not found, redirecting to /");
       // router.push("/");
-      // You can redirect if you want: router.push("/");
     }
   }, [projectsLoading, project]);
 
@@ -160,7 +148,7 @@ export default function ProjectPage() {
     if (!newTitle.trim()) return;
     if (!canEditTasks) {
       setLocalError(
-        "You don't have permission to create tasks in this workspace."
+        "You don't have permission to create tasks in this workspace.",
       );
       return;
     }
@@ -180,7 +168,7 @@ export default function ProjectPage() {
   const moveTask = async (
     taskId: string,
     current: TaskStatus,
-    direction: "left" | "right"
+    direction: "left" | "right",
   ) => {
     if (!canEditTasks) return;
     const index = STATUS_FLOW.indexOf(current);
@@ -213,7 +201,6 @@ export default function ProjectPage() {
   });
 
   // Group only top-level tasks by status for columns
-  // Group tasks by status for Kanban columns
   const tasksByStatus: Record<TaskStatus, Task[]> = {
     TODO: [],
     IN_PROGRESS: [],
@@ -222,7 +209,6 @@ export default function ProjectPage() {
   };
 
   topLevelTasks.forEach((t) => {
-  tasks.forEach((t) => {
     if (!tasksByStatus[t.status]) return;
     tasksByStatus[t.status].push(t);
   });
@@ -242,10 +228,10 @@ export default function ProjectPage() {
             (t) =>
               t.projectId === selectedTask.projectId &&
               !t.parentTaskId &&
-              t.id !== selectedTask.id
+              t.id !== selectedTask.id,
           )
         : [],
-    [tasks, selectedTask]
+    [tasks, selectedTask],
   );
 
   const selectedTaskHasChildren = useMemo(
@@ -253,7 +239,7 @@ export default function ProjectPage() {
       selectedTask
         ? tasks.some((t) => t.parentTaskId === selectedTask.id)
         : false,
-    [tasks, selectedTask]
+    [tasks, selectedTask],
   );
 
   // Open modal with a task
@@ -262,7 +248,6 @@ export default function ProjectPage() {
     setEditTitle(task.title);
     setEditDesc(task.description || "");
     setEditStatus(task.status);
-
     setEditPriority((task.priority as TaskPriority) || "MEDIUM");
     setEditDueDate(task.dueDate ? task.dueDate.slice(0, 10) : "");
 
@@ -279,13 +264,11 @@ export default function ProjectPage() {
     setEditType((task.type as TaskType) || "TASK");
     setNewSubtaskTitle("");
     setEditError(null);
-
     setEditParentTaskId(task.parentTaskId ?? null);
-    setEditError(null);
   };
 
   const handleCloseTaskModal = () => {
-    if (tasksSaving) return; // avoid closing while saving
+    if (tasksSaving) return;
     setSelectedTask(null);
     setEditTitle("");
     setEditDesc("");
@@ -298,7 +281,6 @@ export default function ProjectPage() {
     setNewSubtaskTitle("");
     setEditError(null);
     setEditParentTaskId(null);
-    setEditError(null);
   };
 
   const handleSaveTask = async (e: React.FormEvent) => {
@@ -320,15 +302,9 @@ export default function ProjectPage() {
       const h = hoursRaw === "" ? 0 : Number(hoursRaw);
       const m = minutesRaw === "" ? 0 : Number(minutesRaw);
 
-      if (
-        Number.isNaN(h) ||
-        Number.isNaN(m) ||
-        h < 0 ||
-        m < 0 ||
-        m > 59
-      ) {
+      if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || m < 0 || m > 59) {
         setEditError(
-          "Estimate must be a valid time (hours ≥ 0, minutes between 0–59)."
+          "Estimate must be a valid time (hours ≥ 0, minutes between 0–59).",
         );
         return;
       }
@@ -358,16 +334,6 @@ export default function ProjectPage() {
         await reloadTasks();
       }
 
-    try {
-      setEditError(null);
-      // updateTask is not provided by the hook; update status via updateTaskStatus
-      if (typeof updateTaskStatus === "function") {
-        await updateTaskStatus(selectedTask.id, editStatus);
-      }
-      // reload tasks to pick up any server-side changes (if provided)
-      if (typeof reloadTasks === "function") {
-        await reloadTasks();
-      }
       handleCloseTaskModal();
     } catch (err: any) {
       setEditError(err.message || "Failed to update task");
@@ -401,11 +367,11 @@ export default function ProjectPage() {
               ...prev,
               subtasks: [...(prev.subtasks ?? []), created],
             }
-          : prev
+          : prev,
       );
       setNewSubtaskTitle("");
     } catch {
-      // handled by hook
+      // error handled by hook
     }
   };
 
@@ -420,13 +386,13 @@ export default function ProjectPage() {
           ? {
               ...prev,
               subtasks: (prev.subtasks ?? []).map((s) =>
-                s.id === subtaskId ? updated : s
+                s.id === subtaskId ? updated : s,
               ),
             }
-          : prev
+          : prev,
       );
     } catch {
-      // handled by hook
+      // error handled by hook
     }
   };
 
@@ -440,10 +406,10 @@ export default function ProjectPage() {
               ...prev,
               subtasks: (prev.subtasks ?? []).filter((s) => s.id !== subtaskId),
             }
-          : prev
+          : prev,
       );
     } catch {
-      // handled by hook
+      // error handled by hook
     }
   };
 
@@ -506,7 +472,10 @@ export default function ProjectPage() {
               >
                 Workspace: <strong>{workspaceName}</strong>
                 {currentRole && (
-                  <> · Your role: <strong>{currentRole}</strong></>
+                  <>
+                    {" "}
+                    · Your role: <strong>{currentRole}</strong>
+                  </>
                 )}
                 {project?.createdAt && (
                   <>
@@ -670,48 +639,6 @@ export default function ProjectPage() {
                                 flexDirection: "column",
                                 gap: "6px",
                                 cursor: "pointer",
-                        {tasksByStatus[col.key].map((task) => (
-                          <div
-                            key={task.id}
-                            onClick={() => handleOpenTask(task)}
-                            style={{
-                              padding: "8px 10px",
-                              borderRadius: "6px",
-                              border: "1px solid #e1e5e9",
-                              background: "white",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "6px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontSize: "13px",
-                                fontWeight: 500,
-                                color: "#172b4d",
-                              }}
-                            >
-                              {task.title}
-                            </div>
-                            {task.description && (
-                              <div
-                                style={{
-                                  fontSize: "12px",
-                                  color: "#6b778c",
-                                }}
-                              >
-                                {task.description}
-                              </div>
-                            )}
-
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginTop: "4px",
-                                gap: "6px",
                               }}
                             >
                               <div
@@ -733,14 +660,6 @@ export default function ProjectPage() {
                                   {task.description}
                                 </div>
                               )}
-                                  fontSize: "10px",
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.04em",
-                                  color: "#6b778c",
-                                }}
-                              >
-                                {task.status}
-                              </div>
 
                               <div
                                 style={{
@@ -806,7 +725,7 @@ export default function ProjectPage() {
                                           }}
                                         >
                                           {formatEstimateMinutes(
-                                            task.estimateMinutes
+                                            task.estimateMinutes,
                                           )}
                                         </span>
                                       )}
@@ -962,7 +881,7 @@ export default function ProjectPage() {
                                     Child tasks (
                                     {
                                       children.filter(
-                                        (c) => c.status === "DONE"
+                                        (c) => c.status === "DONE",
                                       ).length
                                     }
                                     /{children.length})
@@ -1032,70 +951,6 @@ export default function ProjectPage() {
                             </div>
                           );
                         })}
-                                  gap: "4px",
-                                }}
-                              >
-                                {/* Move left */}
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    moveTask(task.id, task.status, "left");
-                                  }}
-                                  disabled={
-                                    tasksSaving ||
-                                    STATUS_FLOW.indexOf(task.status) === 0
-                                  }
-                                  style={{
-                                    padding: "2px 6px",
-                                    fontSize: "11px",
-                                    borderRadius: "4px",
-                                    border: "1px solid #dfe1e6",
-                                    background: "white",
-                                    color: "#6b778c",
-                                    cursor:
-                                      tasksSaving ||
-                                      STATUS_FLOW.indexOf(task.status) === 0
-                                        ? "not-allowed"
-                                        : "pointer",
-                                  }}
-                                >
-                                  ←
-                                </button>
-
-                                {/* Move right */}
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    moveTask(task.id, task.status, "right");
-                                  }}
-                                  disabled={
-                                    tasksSaving ||
-                                    STATUS_FLOW.indexOf(task.status) ===
-                                      STATUS_FLOW.length - 1
-                                  }
-                                  style={{
-                                    padding: "2px 6px",
-                                    fontSize: "11px",
-                                    borderRadius: "4px",
-                                    border: "1px solid #dfe1e6",
-                                    background: "white",
-                                    color: "#6b778c",
-                                    cursor:
-                                      tasksSaving ||
-                                      STATUS_FLOW.indexOf(task.status) ===
-                                        STATUS_FLOW.length - 1
-                                        ? "not-allowed"
-                                        : "pointer",
-                                  }}
-                                >
-                                  →
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     )}
                   </div>
@@ -1197,90 +1052,10 @@ export default function ProjectPage() {
                   color: "#6b778c",
                 }}
               >
-                You can view tasks in this project, but you don&apos;t have permission
-                to create or edit them in this workspace.
+                You can view tasks in this project, but you don&apos;t have
+                permission to create or edit them in this workspace.
               </div>
             )}
-            <div
-              style={{
-                marginTop: "20px",
-                background: "white",
-                borderRadius: "8px",
-                border: "1px solid #e1e5e9",
-                padding: "16px",
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "#172b4d",
-                  marginBottom: "10px",
-                }}
-              >
-                Add new task
-              </h3>
-
-              {(localError || tasksError) && (
-                <div
-                  style={{
-                    fontSize: "13px",
-                    color: "#de350b",
-                    marginBottom: "8px",
-                  }}
-                >
-                  {localError || tasksError}
-                </div>
-              )}
-
-              <form
-                onSubmit={handleCreateTask}
-                style={{ display: "grid", gap: "8px" }}
-              >
-                <input
-                  type="text"
-                  placeholder="Task title"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: "4px",
-                    border: "1px solid #dfe1e6",
-                    fontSize: "14px",
-                  }}
-                />
-                <textarea
-                  placeholder="Description (optional)"
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                  rows={2}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: "4px",
-                    border: "1px solid #dfe1e6",
-                    fontSize: "14px",
-                    resize: "vertical",
-                  }}
-                />
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button
-                    type="submit"
-                    disabled={tasksSaving || !newTitle.trim()}
-                    style={{
-                      padding: "8px 14px",
-                      fontSize: "14px",
-                      borderRadius: "4px",
-                      border: "none",
-                      background: tasksSaving ? "#c1c7d0" : "#0052cc",
-                      color: "white",
-                      cursor: tasksSaving ? "default" : "pointer",
-                    }}
-                  >
-                    {tasksSaving ? "Adding…" : "Add task"}
-                  </button>
-                </div>
-              </form>
-            </div>
           </div>
 
           {/* RIGHT: Project Stats */}
@@ -1290,8 +1065,6 @@ export default function ProjectPage() {
                 background: "white",
                 border: "1px solid #dfe1e6",
                 borderRadius: "8px",
-                borderRadius: "8px",
-                border: "1px solid #e1e5e9",
                 padding: "20px",
               }}
             >
@@ -1334,7 +1107,6 @@ export default function ProjectPage() {
               borderRadius: "10px",
               width: "100%",
               maxWidth: "520px",
-              maxWidth: "480px",
               boxShadow: "0 12px 32px rgba(9,30,66,0.35)",
             }}
           >
@@ -1356,8 +1128,8 @@ export default function ProjectPage() {
                 marginBottom: "16px",
               }}
             >
-              Edit title, description, status, estimate, priority and subtasks.
-              Edit title, description, and status.
+              Edit title, description, status, estimate, priority, type and
+              subtasks.
             </p>
 
             {editError && (
@@ -1393,11 +1165,10 @@ export default function ProjectPage() {
                     marginTop: "4px",
                     padding: "8px 10px",
                     borderRadius: "4px",
+                    border: "1px solid #dfe1e6",
                     fontSize: "14px",
                     opacity: isReadOnly ? 0.6 : 1,
                     cursor: isReadOnly ? "not-allowed" : "auto",
-                    border: "1px solid #dfe1e6",
-                    fontSize: "14px",
                   }}
                 />
               </label>
@@ -1596,14 +1367,8 @@ export default function ProjectPage() {
                 Issue type
                 <select
                   value={editType}
-                  onChange={(e) =>
-                    setEditType(e.target.value as TaskType)
-                  }
+                  onChange={(e) => setEditType(e.target.value as TaskType)}
                   disabled={isReadOnly || tasksSaving}
-                Status
-                <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as TaskStatus)}
                   style={{
                     marginTop: "4px",
                     padding: "8px 10px",
@@ -1821,16 +1586,6 @@ export default function ProjectPage() {
                 </div>
               </div>
 
-                  }}
-                >
-                  {STATUS_FLOW.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
               <div
                 style={{
                   marginTop: "16px",
@@ -1838,16 +1593,12 @@ export default function ProjectPage() {
                   justifyContent: "space-between",
                   gap: "8px",
                   alignItems: "center",
-                  justifyContent: "flex-end",
-                  gap: "8px",
                 }}
               >
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={isReadOnly || tasksSaving}
-                  onClick={handleCloseTaskModal}
-                  disabled={tasksSaving}
                   style={{
                     padding: "8px 14px",
                     fontSize: "14px",
@@ -1912,38 +1663,10 @@ export default function ProjectPage() {
                     color: "#6b778c",
                   }}
                 >
-                  You have read-only access in this workspace; task changes are disabled.
+                  You have read-only access in this workspace; task changes are
+                  disabled.
                 </p>
               )}
-                    border: "1px solid #c1c7d0",
-                    background: "white",
-                    cursor: tasksSaving ? "default" : "pointer",
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={tasksSaving || !editTitle.trim()}
-                  style={{
-                    padding: "8px 14px",
-                    fontSize: "14px",
-                    borderRadius: "4px",
-                    border: "none",
-                    background:
-                      tasksSaving || !editTitle.trim()
-                        ? "#c1c7d0"
-                        : "#0052cc",
-                    color: "white",
-                    cursor:
-                      tasksSaving || !editTitle.trim()
-                        ? "default"
-                        : "pointer",
-                  }}
-                >
-                  {tasksSaving ? "Saving…" : "Save changes"}
-                </button>
-              </div>
             </form>
           </div>
         </div>
@@ -2031,9 +1754,6 @@ export default function ProjectPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
     </div>
   );
 }

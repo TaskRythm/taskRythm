@@ -15,17 +15,9 @@ import { CreateSubtaskDto } from './dto/create-subtask.dto';
 import { UpdateSubtaskDto } from './dto/update-subtask.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/auth-user.interface';
-
 import { WorkspaceRole } from '@prisma/client';
 import { WorkspaceRoleGuard } from '../workspaces/workspace-role.guard';
 import { WorkspaceRoles } from '../workspaces/workspace-role.decorator';
-
-import {Body,Controller,Get,Param,Patch,Post,Delete,} from '@nestjs/common';
-import { TasksService } from './tasks.service';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
-import { CurrentUser } from '../auth/current-user.decorator';
-import type { AuthUser } from '../auth/auth-user.interface';
 
 @Controller('tasks')
 export class TasksController {
@@ -83,10 +75,11 @@ export class TasksController {
     WorkspaceRole.MEMBER,
   )
   async remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.tasksService.remove(user, id);
+    await this.tasksService.remove(user, id);
+    return { success: true };
   }
 
-  // ---- Subtasks ----
+  // ---------- Subtasks ----------
 
   @Post(':taskId/subtasks')
   @UseGuards(WorkspaceRoleGuard)
@@ -129,7 +122,7 @@ export class TasksController {
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
-    WorkspaceRole.MEMBER,
+    WorkspaceRole.MEMBER
   )
   async removeSubtask(
     @CurrentUser() user: AuthUser,
@@ -137,9 +130,5 @@ export class TasksController {
   ) {
     await this.tasksService.removeSubtask(user, subtaskId);
     return { success: true };
-  }
-}
-  async remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.tasksService.remove(user, id);
   }
 }

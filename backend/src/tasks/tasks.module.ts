@@ -6,9 +6,6 @@ import { WorkspacesModule } from '../workspaces/workspaces.module';
 
 @Module({
   imports: [PrismaModule, WorkspacesModule],
-
-@Module({
-  imports: [PrismaModule],
   controllers: [TasksController],
   providers: [TasksService],
   exports: [TasksService],
