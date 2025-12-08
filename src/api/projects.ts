@@ -42,3 +42,17 @@ export async function createProject(
 
   return (res && res.project) || res;
 }
+
+export async function deleteProject(
+  callApi: CallApiFn,
+  projectId: string,
+  workspaceId?: string
+): Promise<{ success: boolean }> {
+  let url = `projects/${projectId}`;
+  if (workspaceId) {
+    url += `?workspaceId=${encodeURIComponent(workspaceId)}`;
+  }
+  return callApi(url, {
+    method: "DELETE",
+  });
+}

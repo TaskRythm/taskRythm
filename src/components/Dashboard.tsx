@@ -1,3 +1,7 @@
+// src/components/Dashboard.tsx
+"use client";
+
+import { useState, useEffect } from "react";
 "use client";
 
 import { useState } from "react";
@@ -9,11 +13,16 @@ import {
   Clock,
   Plus,
 } from "lucide-react";
+
 import WorkspaceSidebar from "./WorkspaceSidebar";
 import { useWorkspaceStore } from "@/store/workspaceStore";
 import { useProjects } from "@/hooks/useProjects";
 import { useRouter } from "next/navigation";
 import { useWorkspaceActivity } from "@/hooks/useWorkspaceActivity";
+import { WorkspaceHeader } from "./WorkspaceHeader";
+import WorkspaceMembersCard from "./WorkspaceMembersCard";
+import WorkspaceSettings from "./WorkspaceSettings";
+import ProjectDeleteButton from "./ProjectDeleteButton";
 
 interface DashboardProps {
   user: any;
@@ -27,6 +36,7 @@ export default function Dashboard({ user }: DashboardProps) {
     creating: projectCreating,
     error: projectsError,
     createProject,
+    canCreateProjects,
   } = useProjects();
   const router = useRouter();
 
@@ -52,6 +62,13 @@ export default function Dashboard({ user }: DashboardProps) {
     createdAt: p.createdAt ?? null,
   }));
 
+  // State for tracking deleted projects
+  const [displayedProjects, setDisplayedProjects] = useState(realProjects);
+
+  // Sync displayedProjects when realProjects changes (e.g., new projects loaded)
+  useEffect(() => {
+    setDisplayedProjects(realProjects);
+  }, [projects.length]); // Only sync on projects length change to avoid unnecessary updates
   const displayProjects = realProjects;
 
   // Simple "x min/hours/days ago" formatter
@@ -71,6 +88,7 @@ export default function Dashboard({ user }: DashboardProps) {
     return diffDays + " d ago";
   }
 
+  const activeProjectsCount = displayedProjects.filter(
   const activeProjectsCount = displayProjects.filter(
     (p) => !p.archived
   ).length;
@@ -79,6 +97,8 @@ export default function Dashboard({ user }: DashboardProps) {
 
   // Find last created project by createdAt (if backend sends it)
   let lastCreatedProjectName: string | null = null;
+  if (displayedProjects.length > 0) {
+    const withCreated = displayedProjects.filter((p) => !!p.createdAt);
   if (displayProjects.length > 0) {
     const withCreated = displayProjects.filter((p) => !!p.createdAt);
     if (withCreated.length > 0) {
@@ -91,6 +111,7 @@ export default function Dashboard({ user }: DashboardProps) {
       lastCreatedProjectName = sortedByCreated[0].name;
     } else {
       lastCreatedProjectName =
+        displayedProjects[displayedProjects.length - 1].name ?? null;
         displayProjects[displayProjects.length - 1].name ?? null;
     }
   }
@@ -191,6 +212,30 @@ export default function Dashboard({ user }: DashboardProps) {
                 gap: "16px",
               }}
             >
+              {canCreateProjects && (
+                <button
+                  onClick={handleOpenNewProject}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "12px 20px",
+                    background:
+                      "linear-gradient(135deg, #0052cc 0%, #0065ff 100%)",
+                    color: "white",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    border: "none",
+                    boxShadow: "0 2px 8px rgba(0,82,204,0.3)",
+                    transition:
+                      "transform 0.15s ease, box-shadow 0.15s ease",
+                  }}
+                >
+                  <Plus size={18} />
+                  New Project
+                </button>
+              )}
               <button
                 onClick={handleOpenNewProject}
                 style={{
@@ -216,6 +261,11 @@ export default function Dashboard({ user }: DashboardProps) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Workspace header (name + your role) */}
+      <div className="container" style={{ marginTop: "16px" }}>
+        <WorkspaceHeader />
       </div>
 
       {/* Dashboard Content: sidebar + main area */}
@@ -269,6 +319,7 @@ export default function Dashboard({ user }: DashboardProps) {
               >
                 {projectsLoading
                   ? "Loading..."
+                  : `${displayedProjects.length} projects`}
                   : `${displayProjects.length} projects`}
               </span>
             </div>
@@ -286,6 +337,7 @@ export default function Dashboard({ user }: DashboardProps) {
             )}
 
             {/* Empty state when no projects */}
+            {!projectsLoading && displayedProjects.length === 0 && (
             {!projectsLoading && displayProjects.length === 0 && (
               <div
                 style={{
@@ -316,6 +368,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 gap: "16px",
               }}
             >
+              {displayedProjects.map((project) => (
               {displayProjects.map((project) => (
                 <div
                   key={project.id}
@@ -560,6 +613,12 @@ export default function Dashboard({ user }: DashboardProps) {
                 </div>
               </div>
             </div>
+
+            {/* Workspace members (workspace-level, NOT per-project) */}
+            <WorkspaceMembersCard />
+
+            {/* Workspace settings (delete workspace) */}
+            <WorkspaceSettings />
 
             {/* Recent Activity */}
             <div

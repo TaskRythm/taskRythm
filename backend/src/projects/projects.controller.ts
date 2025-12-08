@@ -1,3 +1,14 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -5,6 +16,10 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/auth-user.interface';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+
+import { WorkspaceRole } from '@prisma/client';
+import { WorkspaceRoleGuard } from '../workspaces/workspace-role.guard';
+import { WorkspaceRoles } from '../workspaces/workspace-role.decorator';
 
 @Controller('projects')
 export class ProjectsController {
@@ -28,6 +43,13 @@ export class ProjectsController {
   }
 
   @Get()
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+    WorkspaceRole.VIEWER,
+  )
   async listProjects(
     @CurrentUser() user: AuthUser,
     @Query('workspaceId') workspaceId: string,
@@ -39,6 +61,12 @@ export class ProjectsController {
   }
 
   @Post()
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
   async createProject(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreateProjectDto,
@@ -50,6 +78,13 @@ export class ProjectsController {
   }
 
   @Get(':id')
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+    WorkspaceRole.VIEWER,
+  )
   async getProject(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -59,6 +94,29 @@ export class ProjectsController {
 
     return { project };
   }
+
+  @Patch(':id')
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  async updateProject(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateProjectDto,
+  ) {
+    const userId = await this.getOrCreateUserId(user);
+    const project = await this.projectsService.update(id, dto, userId);
+
+    return { project };
+  }
+
+  // Soft delete
+  @Patch(':id/archive')
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
 
   @Patch(':id')
   async updateProject(
@@ -82,5 +140,19 @@ export class ProjectsController {
     const project = await this.projectsService.remove(id, userId);
 
     return { project };
+  }
+
+  // Permanent delete (with RBAC check)
+  @Delete(':id')
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  async deleteProject(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    const userId = await this.getOrCreateUserId(user);
+    await this.projectsService.deleteProjectForUser(id, userId);
+
+    return { success: true };
   }
 }
