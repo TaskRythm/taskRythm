@@ -14,7 +14,8 @@ function AcceptInviteContent() {
   const [state, setState] = useState<AcceptState>("idle");
   const [message, setMessage] = useState<string>("");
 
-  const token = searchParams.get("token");
+  // Get token from query param or sessionStorage (fallback after Auth0 redirect)
+  const token = searchParams.get("token") || (typeof window !== 'undefined' ? sessionStorage.getItem('inviteToken') : null);
 
   // Try to accept once user is authenticated
   useEffect(() => {
@@ -44,7 +45,9 @@ function AcceptInviteContent() {
         });
 
         setState("success");
-        setMessage("You’ve joined the workspace successfully.");
+        setMessage("You've joined the workspace successfully.");
+        // Clean up token from sessionStorage
+        sessionStorage.removeItem('inviteToken');
       } catch (err: any) {
         setState("error");
         setMessage(err.message || "Failed to accept invite.");
@@ -58,8 +61,9 @@ function AcceptInviteContent() {
     if (!token) {
       login();
     } else {
-      // after login, Auth0 will return to /accept-invite?token=...
-      login(`/accept-invite?token=${encodeURIComponent(token)}`);
+      // Store token in sessionStorage so we can retrieve it after Auth0 callback
+      sessionStorage.setItem('inviteToken', token);
+      login();
     }
   };
 

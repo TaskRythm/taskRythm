@@ -70,8 +70,8 @@ export function WorkspaceSettings() {
           setIsDeleting(true);
           setError(null);
           await deleteWorkspace(callApi, activeWorkspaceId);
-          // After deletion: redirect to dashboard
-          router.push("/dashboard");
+          // After deletion: redirect to home
+          router.push("/");
         } catch (err: any) {
           setError(normalizeApiError(err));
           setConfirmDialog(null);
