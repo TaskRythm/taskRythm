@@ -29,6 +29,11 @@ export interface Task {
   updatedAt: string;
 
   subtasks?: Subtask[];
+  title: string;
+  description?: string | null;
+  status: TaskStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
 type CallApiFn = (endpoint: string, options?: RequestInit) => Promise<any>;
@@ -60,6 +65,7 @@ export async function createTask(
     type?: TaskType;
     parentTaskId?: string;
   }
+  data: { projectId: string; title: string; description?: string }
 ): Promise<Task> {
   const res = await callApi("tasks", {
     method: "POST",
@@ -141,4 +147,5 @@ export async function deleteSubtask(
   await callApi(`tasks/subtasks/${encodeURIComponent(subtaskId)}`, {
     method: "DELETE",
   });
+}
 }

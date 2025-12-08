@@ -10,6 +10,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { CreateSubtaskDto } from './dto/create-subtask.dto';
 import { UpdateSubtaskDto } from './dto/update-subtask.dto';
 import { ActivityType, TaskStatus, TaskType } from '@prisma/client';
+import { ActivityType, TaskStatus } from '@prisma/client';
 import type { AuthUser } from '../auth/auth-user.interface';
 
 @Injectable()
@@ -104,6 +105,7 @@ export class TasksService {
     workspaceId: string;
     projectId: string;
     taskId: string | null;
+    taskId: string;
     userId: string;
     type: ActivityType;
     message: string;
@@ -111,6 +113,7 @@ export class TasksService {
   }) {
     const { workspaceId, projectId, taskId, userId, type, message, payload } =
       params;
+    const { workspaceId, projectId, taskId, userId, type, message, payload } = params;
 
     await this.prisma.activityLog.create({
       data: {
@@ -126,6 +129,9 @@ export class TasksService {
   }
 
   // Create a new task under a project.
+  /**
+   * Create a new task under a project.
+   */
   async create(authUser: AuthUser, dto: CreateTaskDto) {
     const user = await this.ensureUser(authUser);
 
@@ -218,6 +224,9 @@ export class TasksService {
   }
 
   // Update a task (title, status, assignee, etc.).
+  /**
+   * Update a task (title, status, assignee, etc.).
+   */
   async update(authUser: AuthUser, taskId: string, dto: UpdateTaskDto) {
     const user = await this.ensureUser(authUser);
 
@@ -288,6 +297,10 @@ export class TasksService {
       },
     });
 
+      },
+    });
+
+    // Log generic update
     await this.logActivity({
       workspaceId: existing.project.workspaceId,
       projectId: existing.projectId,
@@ -313,6 +326,11 @@ export class TasksService {
       },
     });
 
+        },
+      },
+    });
+
+    // Extra log if status specifically changed
     if (existing.status !== updated.status) {
       await this.logActivity({
         workspaceId: existing.project.workspaceId,
@@ -539,6 +557,25 @@ export class TasksService {
       userId: user.id,
       type: ActivityType.TASK_UPDATED,
       message: `${user.name || 'Someone'} deleted subtask "${subtask.title}" from "${taskTitle}"`,
+  /**
+   * Delete a task.
+   */
+  async remove(authUser: AuthUser, taskId: string) {
+    const user = await this.ensureUser(authUser);
+
+    const existing = await this.findTaskWithAccess(taskId, user.id);
+
+    await this.prisma.task.delete({
+      where: { id: existing.id },
+    });
+
+    await this.logActivity({
+      workspaceId: existing.project.workspaceId,
+      projectId: existing.projectId,
+      taskId: existing.id,
+      userId: user.id,
+      type: ActivityType.TASK_UPDATED,
+      message: `${user.name || 'Someone'} deleted task "${existing.title}"`,
     });
 
     return { success: true };

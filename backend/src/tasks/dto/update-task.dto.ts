@@ -1,5 +1,7 @@
 import { IsString, IsOptional, IsEnum, IsDateString, IsUUID, IsInt, Min, ValidateIf } from 'class-validator';
 import { TaskPriority, TaskStatus, TaskType } from '@prisma/client';
+import { IsString, IsOptional, IsEnum, IsDateString, IsUUID, IsInt, Min } from 'class-validator';
+import { TaskPriority, TaskStatus } from '@prisma/client';
 
 export class UpdateTaskDto {
   @IsOptional()

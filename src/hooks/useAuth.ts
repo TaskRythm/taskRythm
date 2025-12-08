@@ -1,4 +1,3 @@
-// src/hooks/useAuth.ts
 import { useAuth0 } from '@auth0/auth0-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -48,14 +47,13 @@ export const useAuth = () => {
     return response.json();
   };
 
-  // ✅ now takes an optional returnTo path
-  const login = (returnTo?: string) =>
+  const login = () =>
     loginWithRedirect({
       authorizationParams: {
         redirect_uri: `${window.location.origin}/auth/callback`,
       },
       appState: {
-        returnTo: returnTo ?? '/',
+        returnTo: '/',
       },
     });
 

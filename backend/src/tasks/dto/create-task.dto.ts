@@ -8,6 +8,14 @@ export class CreateTaskDto {
 
   @IsString()
   @IsNotEmpty()
+import { IsString, IsOptional, IsEnum, IsDateString, IsUUID, IsInt, Min } from 'class-validator';
+import { TaskPriority, TaskStatus } from '@prisma/client';
+
+export class CreateTaskDto {
+  @IsUUID()
+  projectId: string;
+
+  @IsString()
   title: string;
 
   @IsOptional()
@@ -29,6 +37,8 @@ export class CreateTaskDto {
   @IsOptional()
   @IsDateString()
   dueDate?: string;
+  @IsDateString()
+  dueDate?: string; // ISO string
 
   @IsOptional()
   @IsUUID()

@@ -50,6 +50,10 @@ export class ProjectsService {
       throw new ForbiddenException(
         'Insufficient permissions for this workspace',
       );
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this workspace');
     }
 
     return membership;
@@ -60,6 +64,7 @@ export class ProjectsService {
 
     return this.prisma.project.findMany({
       where: { workspaceId, archived: false },
+      where: { workspaceId },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -112,6 +117,25 @@ export class ProjectsService {
     });
   }
   async remove(id: string, userId: string) {
+      },
+    });
+  }
+
+  async findOne(id: string, userId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.assertWorkspaceMembership(project.workspaceId, userId);
+
+    return project;
+  }
+
+  async update(id: string, dto: UpdateProjectDto, userId: string) {
     const existing = await this.prisma.project.findUnique({
       where: { id },
     });
@@ -171,6 +195,28 @@ export class ProjectsService {
       return tx.project.delete({
         where: { id: project.id },
       });
+    return this.prisma.project.update({
+      where: { id },
+      data: {
+        name: dto.name ?? existing.name,
+        description: dto.description ?? existing.description,
+        archived: dto.archived ?? existing.archived,
+      },
+    });
+  }
+  async remove(id: string, userId: string) {
+    const existing = await this.prisma.project.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.assertWorkspaceMembership(existing.workspaceId, userId);
+
+    return this.prisma.project.delete({
+      where: { id },
     });
   }
 }

@@ -1,23 +1,14 @@
 // src/hooks/useProjects.ts
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useWorkspaceStore } from "@/store/workspaceStore";
-import { fetchProjects, createProject, Project } from "@/api/projects";
-import { canManageProjects } from "@/lib/rbac";
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useWorkspaceStore } from '@/store/workspaceStore';
+import { fetchProjects, createProject, Project } from '@/api/projects';
 
 export function useProjects() {
   const { callApi, isAuthenticated } = useAuth();
-  const { activeWorkspaceId, workspaces } = useWorkspaceStore();
-
-  const currentRole = useMemo(
-    () =>
-      workspaces.find((w) => w.workspaceId === activeWorkspaceId)?.role ?? null,
-    [workspaces, activeWorkspaceId]
-  );
-
-  const canCreateProjects = canManageProjects(currentRole);
+  const { activeWorkspaceId } = useWorkspaceStore();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,22 +24,15 @@ export function useProjects() {
       const data = await fetchProjects(callApi, activeWorkspaceId);
       setProjects(data);
     } catch (err: any) {
-      console.error("Error loading projects", err);
-      setError(err.message || "Failed to load projects");
+      console.error('Error loading projects', err);
+      setError(err.message || 'Failed to load projects');
     } finally {
       setLoading(false);
     }
   };
 
   const newProject = async (body: { name: string; description?: string }) => {
-    if (!activeWorkspaceId) throw new Error("No active workspace selected");
-
-    if (!canCreateProjects) {
-      const msg =
-        "You don't have permission to create projects in this workspace.";
-      setError(msg);
-      throw new Error(msg);
-    }
+    if (!activeWorkspaceId) throw new Error('No active workspace selected');
 
     try {
       setCreating(true);
@@ -60,10 +44,9 @@ export function useProjects() {
       });
 
       setProjects((prev) => [...prev, project]);
-      return project;
     } catch (err: any) {
-      console.error("Error creating project", err);
-      setError(err.message || "Failed to create project");
+      console.error('Error creating project', err);
+      setError(err.message || 'Failed to create project');
       throw err;
     } finally {
       setCreating(false);
@@ -72,7 +55,7 @@ export function useProjects() {
 
   useEffect(() => {
     if (isAuthenticated && activeWorkspaceId) {
-      void load();
+      load();
     } else {
       setProjects([]);
     }
@@ -83,7 +66,6 @@ export function useProjects() {
     loading,
     creating,
     error,
-    canCreateProjects,
     reloadProjects: load,
     createProject: newProject,
   };
