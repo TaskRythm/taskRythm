@@ -9,7 +9,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -117,21 +116,6 @@ export class ProjectsController {
   @Patch(':id/archive')
   @UseGuards(WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
-
-  @Patch(':id')
-  async updateProject(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Body() dto: UpdateProjectDto,
-  ) {
-    const userId = await this.getOrCreateUserId(user);
-    const project = await this.projectsService.update(id, dto, userId);
-
-    return { project };
-  }
-
-  // Soft delete
-  @Patch(':id/archive')
   async archiveProject(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -151,7 +135,7 @@ export class ProjectsController {
     @Param('id') id: string,
   ) {
     const userId = await this.getOrCreateUserId(user);
-    await this.projectsService.deleteProjectForUser(id, userId);
+    await this.projectsService.remove(id, userId);
 
     return { success: true };
   }

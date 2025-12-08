@@ -2,9 +2,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-"use client";
-
-import { useState } from "react";
 import {
   FolderKanban,
   Users,
@@ -36,7 +33,6 @@ export default function Dashboard({ user }: DashboardProps) {
     creating: projectCreating,
     error: projectsError,
     createProject,
-    canCreateProjects,
   } = useProjects();
   const router = useRouter();
 
@@ -44,6 +40,10 @@ export default function Dashboard({ user }: DashboardProps) {
     workspaces.find((w: any) => w.workspaceId === activeWorkspaceId) ??
     workspaces[0] ??
     null;
+
+  // Check if user can create projects (MEMBER, ADMIN, OWNER can create)
+  const userRole = activeWorkspace?.role;
+  const canCreateProjects = userRole && ['MEMBER', 'ADMIN', 'OWNER'].includes(userRole);
 
   const {
     activity,
@@ -69,7 +69,6 @@ export default function Dashboard({ user }: DashboardProps) {
   useEffect(() => {
     setDisplayedProjects(realProjects);
   }, [projects.length]); // Only sync on projects length change to avoid unnecessary updates
-  const displayProjects = realProjects;
 
   // Simple "x min/hours/days ago" formatter
   function formatTimeAgo(dateString?: string | null) {
@@ -89,7 +88,6 @@ export default function Dashboard({ user }: DashboardProps) {
   }
 
   const activeProjectsCount = displayedProjects.filter(
-  const activeProjectsCount = displayProjects.filter(
     (p) => !p.archived
   ).length;
 
@@ -99,8 +97,6 @@ export default function Dashboard({ user }: DashboardProps) {
   let lastCreatedProjectName: string | null = null;
   if (displayedProjects.length > 0) {
     const withCreated = displayedProjects.filter((p) => !!p.createdAt);
-  if (displayProjects.length > 0) {
-    const withCreated = displayProjects.filter((p) => !!p.createdAt);
     if (withCreated.length > 0) {
       const sortedByCreated = [...withCreated].sort((a, b) => {
         return (
@@ -112,7 +108,6 @@ export default function Dashboard({ user }: DashboardProps) {
     } else {
       lastCreatedProjectName =
         displayedProjects[displayedProjects.length - 1].name ?? null;
-        displayProjects[displayProjects.length - 1].name ?? null;
     }
   }
 
@@ -236,28 +231,6 @@ export default function Dashboard({ user }: DashboardProps) {
                   New Project
                 </button>
               )}
-              <button
-                onClick={handleOpenNewProject}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "12px 20px",
-                  background:
-                    "linear-gradient(135deg, #0052cc 0%, #0065ff 100%)",
-                  color: "white",
-                  borderRadius: "8px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  border: "none",
-                  boxShadow: "0 2px 8px rgba(0,82,204,0.3)",
-                  transition:
-                    "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-              >
-                <Plus size={18} />
-                New Project
-              </button>
             </div>
           </div>
         </div>
@@ -320,7 +293,6 @@ export default function Dashboard({ user }: DashboardProps) {
                 {projectsLoading
                   ? "Loading..."
                   : `${displayedProjects.length} projects`}
-                  : `${displayProjects.length} projects`}
               </span>
             </div>
 
@@ -338,7 +310,6 @@ export default function Dashboard({ user }: DashboardProps) {
 
             {/* Empty state when no projects */}
             {!projectsLoading && displayedProjects.length === 0 && (
-            {!projectsLoading && displayProjects.length === 0 && (
               <div
                 style={{
                   background: "white",
@@ -369,7 +340,6 @@ export default function Dashboard({ user }: DashboardProps) {
               }}
             >
               {displayedProjects.map((project) => (
-              {displayProjects.map((project) => (
                 <div
                   key={project.id}
                   style={{
