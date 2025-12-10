@@ -12,7 +12,7 @@ interface AiProjectModalProps {
 }
 
 export default function AiProjectModal({ isOpen, onClose, onAccept }: AiProjectModalProps) {
-  const { getAccessToken } = useAuth(); // Get token hook
+  const { callApi } = useAuth(); // Use callApi to call AI endpoint
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -22,8 +22,7 @@ export default function AiProjectModal({ isOpen, onClose, onAccept }: AiProjectM
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const token = await getAccessToken();
-      const data = await generateProjectPlan(prompt, token);
+      const data = await generateProjectPlan(prompt, callApi);
       setResult(data);
     } catch (err) {
       console.error(err);

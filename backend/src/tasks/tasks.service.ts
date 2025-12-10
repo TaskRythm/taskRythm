@@ -1,271 +1,257 @@
 import {
-  Injectable,
   ForbiddenException,
+  Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { ActivityType, TaskStatus } from '@prisma/client';
+import { CreateSubtaskDto } from './dto/create-subtask.dto';
+import { UpdateSubtaskDto } from './dto/update-subtask.dto';
 import type { AuthUser } from '../auth/auth-user.interface';
+import { WorkspacesService } from '../workspaces/workspaces.service';
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workspacesService: WorkspacesService,
+  ) {}
 
   /**
-   * Ensure we have a local User row for this Auth0 identity.
+   * Map Auth0 user → local User row and return user.id.
    */
-  private async ensureUser(authUser: AuthUser) {
-    const auth0Id = authUser.auth0Id || (authUser as any).sub;
-    if (!auth0Id) {
-      throw new UnauthorizedException('Missing Auth0 user id');
-    }
+  private async getOrCreateUserId(user: AuthUser): Promise<string> {
+    const auth0Id = user.auth0Id || (user as any).sub;
+    const email = user.email;
+    const name = user.name;
+    const picture = user.picture;
 
-    let user = await this.prisma.user.findUnique({
-      where: { auth0Id },
-    });
+    const dbUser = await this.workspacesService.ensureUser(
+      auth0Id,
+      email,
+      name,
+      picture,
+    );
 
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          auth0Id,
-          email: authUser.email,
-          name: authUser.name,
-          picture: authUser.picture,
-        },
-      });
-    }
-
-    return user;
+    return dbUser.id;
   }
 
   /**
-   * Ensure the current user is a member of the workspace that owns this project.
+   * Ensure the user is a member of the project’s workspace.
    */
-  private async ensureProjectAccess(projectId: string, userId: string) {
-    const project = await this.prisma.project.findFirst({
-      where: {
-        id: projectId,
-        workspace: {
-          members: {
-            some: {
-              userId,
-            },
-          },
-        },
-      },
-      include: {
-        workspace: true,
-      },
+  private async ensureProjectMembership(projectId: string, userId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
     });
 
     if (!project) {
-      throw new ForbiddenException('You do not have access to this project');
+      throw new NotFoundException('Project not found');
     }
 
-    return project;
+    const membership = await this.prisma.workspaceMember.findFirst({
+      where: {
+        workspaceId: project.workspaceId,
+        userId,
+      },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this workspace');
+    }
+
+    return { project, membership };
   }
 
   /**
-   * Ensure the current user can access this task (via workspace membership).
+   * Ensure the user can access the task by checking its project workspace.
    */
-  private async findTaskWithAccess(taskId: string, userId: string) {
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id: taskId,
-        project: {
-          workspace: {
-            members: {
-              some: { userId },
-            },
-          },
-        },
-      },
-      include: {
-        project: true,
-      },
+  private async ensureTaskMembership(taskId: string, userId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
     });
 
     if (!task) {
-      throw new NotFoundException('Task not found or access denied');
+      throw new NotFoundException('Task not found');
     }
 
+    await this.ensureProjectMembership(task.projectId, userId);
     return task;
   }
 
   /**
-   * Create activity log helper.
+   * List tasks for a project (with subtasks).
    */
-  private async logActivity(params: {
-    workspaceId: string;
-    projectId: string;
-    taskId: string;
-    userId: string;
-    type: ActivityType;
-    message: string;
-    payload?: any;
-  }) {
-    const { workspaceId, projectId, taskId, userId, type, message, payload } = params;
+  async findByProject(user: AuthUser, projectId: string) {
+    const userId = await this.getOrCreateUserId(user);
+    await this.ensureProjectMembership(projectId, userId);
 
-    await this.prisma.activityLog.create({
-      data: {
-        workspaceId,
-        projectId,
-        taskId,
-        userId,
-        type,
-        message,
-        payload,
-      },
-    });
-  }
-
-  /**
-   * Create a new task under a project.
-   */
-  async create(authUser: AuthUser, dto: CreateTaskDto) {
-    const user = await this.ensureUser(authUser);
-
-    const project = await this.ensureProjectAccess(dto.projectId, user.id);
-
-    const task = await this.prisma.task.create({
-      data: {
-        projectId: project.id,
-        title: dto.title,
-        description: dto.description,
-        status: dto.status ?? TaskStatus.TODO,
-        priority: dto.priority,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-        orderIndex: dto.orderIndex,
-        createdById: user.id,
-        assignedToId: dto.assignedToUserId ?? undefined,
-      },
-    });
-
-    await this.logActivity({
-      workspaceId: project.workspaceId,
-      projectId: project.id,
-      taskId: task.id,
-      userId: user.id,
-      type: ActivityType.TASK_CREATED,
-      message: `${user.name || 'Someone'} created task "${task.title}"`,
-      payload: {
-        title: task.title,
-        status: task.status,
-        priority: task.priority,
-      },
-    });
-
-    return task;
-  }
-
-  /**
-   * Get all tasks for a given project (only if user is a member).
-   */
-  async findByProject(authUser: AuthUser, projectId: string) {
-    const user = await this.ensureUser(authUser);
-
-    await this.ensureProjectAccess(projectId, user.id);
-
-    const tasks = await this.prisma.task.findMany({
-      where: {
-        projectId,
-      },
-      orderBy: [
-        { orderIndex: 'asc' },
-        { createdAt: 'asc' },
-      ],
-      include: {
-        assignedTo: true,
-        createdBy: true,
-      },
+    const tasks = await (this.prisma as any).task.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'asc' },
+      include: { subtasks: true },
     });
 
     return tasks;
   }
 
   /**
-   * Update a task (title, status, assignee, etc.).
+   * Create a new task in a project.
    */
-  async update(authUser: AuthUser, taskId: string, dto: UpdateTaskDto) {
-    const user = await this.ensureUser(authUser);
+  async create(user: AuthUser, dto: CreateTaskDto) {
+    const userId = await this.getOrCreateUserId(user);
+    await this.ensureProjectMembership(dto.projectId, userId);
 
-    const existing = await this.findTaskWithAccess(taskId, user.id);
+    const data: any = {
+      projectId: dto.projectId,
+      title: dto.title,
+      description: dto.description ?? null,
+      status: dto.status ?? 'TODO',
+      priority: dto.priority ?? 'MEDIUM',
+      type: dto.type ?? 'TASK',
+      orderIndex: dto.orderIndex ?? 0,
+      estimateMinutes:
+        typeof dto.estimateMinutes === 'number'
+          ? dto.estimateMinutes
+          : null,
+      parentTaskId: dto.parentTaskId ?? null,
+    };
 
-    const updated = await this.prisma.task.update({
-      where: { id: existing.id },
-      data: {
-        title: dto.title ?? existing.title,
-        description: dto.description ?? existing.description,
-        status: dto.status ?? existing.status,
-        priority: dto.priority ?? existing.priority,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : existing.dueDate,
-        orderIndex: dto.orderIndex ?? existing.orderIndex,
-        assignedToId:
-          dto.assignedToUserId !== undefined
-            ? dto.assignedToUserId
-            : existing.assignedToId,
-      },
-    });
-
-    // Log generic update
-    await this.logActivity({
-      workspaceId: existing.project.workspaceId,
-      projectId: existing.projectId,
-      taskId: existing.id,
-      userId: user.id,
-      type: ActivityType.TASK_UPDATED,
-      message: `${user.name || 'Someone'} updated task "${updated.title}"`,
-      payload: {
-        before: {
-          status: existing.status,
-          priority: existing.priority,
-        },
-        after: {
-          status: updated.status,
-          priority: updated.priority,
-        },
-      },
-    });
-
-    // Extra log if status specifically changed
-    if (existing.status !== updated.status) {
-      await this.logActivity({
-        workspaceId: existing.project.workspaceId,
-        projectId: existing.projectId,
-        taskId: existing.id,
-        userId: user.id,
-        type: ActivityType.TASK_STATUS_CHANGED,
-        message: `${user.name || 'Someone'} moved task "${updated.title}" from ${existing.status} to ${updated.status}`,
-      });
+    if (dto.dueDate) {
+      data.dueDate = new Date(dto.dueDate);
     }
 
-    return updated;
+    if (dto.assignedToUserId) {
+      data.assignedToUserId = dto.assignedToUserId;
+    }
+
+    const task = await (this.prisma as any).task.create({
+      data,
+      include: { subtasks: true },
+    });
+
+    return task;
   }
 
   /**
-   * Delete a task.
+   * Update a task (status, title, desc, estimate, priority, type, parent).
    */
-  async remove(authUser: AuthUser, taskId: string) {
-    const user = await this.ensureUser(authUser);
+  async update(user: AuthUser, taskId: string, dto: UpdateTaskDto) {
+    const userId = await this.getOrCreateUserId(user);
+    const existing = await this.ensureTaskMembership(taskId, userId);
 
-    const existing = await this.findTaskWithAccess(taskId, user.id);
+    const data: any = {};
 
-    await this.prisma.task.delete({
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.status !== undefined) data.status = dto.status;
+    if (dto.priority !== undefined) data.priority = dto.priority;
+    if (dto.type !== undefined) data.type = dto.type;
+    if (dto.orderIndex !== undefined) data.orderIndex = dto.orderIndex;
+    if (dto.estimateMinutes !== undefined)
+      data.estimateMinutes = dto.estimateMinutes;
+    if (dto.parentTaskId !== undefined) data.parentTaskId = dto.parentTaskId;
+
+    if (dto.dueDate !== undefined) {
+      data.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
+    }
+
+    if (dto.assignedToUserId !== undefined) {
+      data.assignedToUserId = dto.assignedToUserId ?? null;
+    }
+
+    const task = await (this.prisma as any).task.update({
       where: { id: existing.id },
+      data,
+      include: { subtasks: true },
     });
 
-    await this.logActivity({
-      workspaceId: existing.project.workspaceId,
-      projectId: existing.projectId,
-      taskId: existing.id,
-      userId: user.id,
-      type: ActivityType.TASK_UPDATED,
-      message: `${user.name || 'Someone'} deleted task "${existing.title}"`,
+    return task;
+  }
+
+  /**
+   * Delete a task and its subtasks.
+   */
+  async remove(user: AuthUser, taskId: string): Promise<void> {
+    const userId = await this.getOrCreateUserId(user);
+    const task = await this.ensureTaskMembership(taskId, userId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await (tx as any).subtask.deleteMany({
+        where: { taskId: task.id },
+      });
+
+      await (tx as any).task.delete({
+        where: { id: task.id },
+      });
+    });
+  }
+
+  // ---------- Subtasks ----------
+
+  async createSubtask(
+    user: AuthUser,
+    taskId: string,
+    dto: CreateSubtaskDto,
+  ) {
+    const userId = await this.getOrCreateUserId(user);
+    await this.ensureTaskMembership(taskId, userId);
+
+    const subtask = await (this.prisma as any).subtask.create({
+      data: {
+        taskId,
+        title: dto.title,
+        isCompleted: false,
+      },
     });
 
-    return { success: true };
+    return subtask;
+  }
+
+  async updateSubtask(
+    user: AuthUser,
+    subtaskId: string,
+    dto: UpdateSubtaskDto,
+  ) {
+    const userId = await this.getOrCreateUserId(user);
+
+    const existing = await (this.prisma as any).subtask.findUnique({
+      where: { id: subtaskId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Subtask not found');
+    }
+
+    await this.ensureTaskMembership(existing.taskId, userId);
+
+    const data: any = {};
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.isCompleted !== undefined) data.isCompleted = dto.isCompleted;
+
+    const subtask = await (this.prisma as any).subtask.update({
+      where: { id: subtaskId },
+      data,
+    });
+
+    return subtask;
+  }
+
+  async removeSubtask(user: AuthUser, subtaskId: string): Promise<void> {
+    const userId = await this.getOrCreateUserId(user);
+
+    const existing = await (this.prisma as any).subtask.findUnique({
+      where: { id: subtaskId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Subtask not found');
+    }
+
+    await this.ensureTaskMembership(existing.taskId, userId);
+
+    await (this.prisma as any).subtask.delete({
+      where: { id: subtaskId },
+    });
   }
 }

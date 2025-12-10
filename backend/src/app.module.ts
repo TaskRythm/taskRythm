@@ -32,6 +32,8 @@ import { AiModule } from './ai/ai.module';
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+    // WorkspaceRoleGuard is applied per-route, not globally
+    // This allows invite acceptance and other public endpoints to work
   ],
 })
 export class AppModule {}

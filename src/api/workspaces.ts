@@ -21,3 +21,12 @@ export async function createWorkspace(
     body: JSON.stringify(data),
   });
 }
+
+export async function deleteWorkspace(
+  callApi: (endpoint: string, options?: RequestInit) => Promise<any>,
+  workspaceId: string
+): Promise<{ success: boolean }> {
+  return callApi(`workspaces/${workspaceId}`, {
+    method: "DELETE",
+  });
+}
