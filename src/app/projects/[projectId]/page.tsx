@@ -2,6 +2,9 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { refineTask } from "@/api/ai";
+import { useAuth } from "@/hooks/useAuth";
+import { Sparkles, Loader2 } from "lucide-react";
 
 import {
   useWorkspaceStore,
@@ -64,6 +67,8 @@ const PRIORITY_COLORS: Record<TaskPriority, string> = {
   MEDIUM: "#ff8b00",
   HIGH: "#de350b",
 };
+
+
 
 export default function ProjectPage() {
   const params = useParams() as { projectId: string };
@@ -128,6 +133,63 @@ export default function ProjectPage() {
     () => projects.find((p: any) => p.id === projectId),
     [projects, projectId],
   );
+
+  const [isRefining, setIsRefining] = useState(false);
+  const { getAccessTokenSilently } = useAuth();
+
+
+  // 👇 FEATURE 2: THE MANAGER (Refine Task)
+ const handleRefineTask = async () => {
+    // 1. Safety check
+    if (!editTitle || !editTitle.trim()) return;
+    
+    setIsRefining(true);
+    setEditError(null);
+
+    try {
+      const token = await getAccessTokenSilently();
+      const result = await refineTask(editTitle, token);
+
+      // 2. Update Form Fields
+      setEditTitle(result.newTitle || editTitle); 
+      setEditDesc(result.description || ""); 
+      
+      if (result.priority) {
+        const prio = result.priority.toUpperCase();
+        if (["LOW", "MEDIUM", "HIGH"].includes(prio)) {
+          setEditPriority(prio as TaskPriority);
+        }
+      }
+
+      // 3. Add Subtasks & Update UI Instantly
+      if (selectedTask && result.subtasks && Array.isArray(result.subtasks)) {
+        for (const subTitle of result.subtasks) {
+           if (subTitle) {
+             // A. Add to Database
+             const newSubtask = await addSubtask(selectedTask.id, subTitle);
+             
+             // B. Update Local Modal State (INSTANT FEEDBACK)
+             setSelectedTask(prev => {
+               if (!prev) return null;
+               return {
+                 ...prev,
+                 subtasks: [...(prev.subtasks || []), newSubtask]
+               };
+             });
+           }
+        }
+        
+        // C. Sync background data
+        if (reloadTasks) await reloadTasks();
+      }
+
+    } catch (err) {
+      console.error("AI Refine Error:", err);
+      setEditError("Failed to refine task. Please try again.");
+    } finally {
+      setIsRefining(false);
+    }
+  };
 
   const workspaceName = useMemo(() => {
     const ws =
@@ -1148,30 +1210,41 @@ export default function ProjectPage() {
               onSubmit={handleSaveTask}
               style={{ display: "flex", flexDirection: "column", gap: "10px" }}
             >
-              <label
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  color: "#6b778c",
-                }}
-              >
-                Title
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  disabled={isReadOnly || tasksSaving}
+              {/* 👇 NEW HEADER WITH MAGIC BUTTON */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
+                  Title
+                </span>
+                
+                <button
+                  type="button"
+                  onClick={handleRefineTask}
+                  disabled={isRefining || isReadOnly || !editTitle.trim()}
                   style={{
-                    marginTop: "4px",
-                    padding: "8px 10px",
-                    borderRadius: "4px",
-                    border: "1px solid #dfe1e6",
-                    fontSize: "14px",
-                    opacity: isReadOnly ? 0.6 : 1,
-                    cursor: isReadOnly ? "not-allowed" : "auto",
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "#9333ea", fontSize: "12px", fontWeight: 600,
+                    display: "flex", alignItems: "center", gap: "4px",
+                    transition: "color 0.2s"
                   }}
-                />
-              </label>
+                >
+                  {isRefining ? <Loader2 size={14} className="animate-spin"/> : <Sparkles size={14} />}
+                  {isRefining ? "Refining..." : "Refine with AI"}
+                </button>
+              </div>
+
+              {/* The Input Field (Same as before, just removed the label wrapper) */}
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                disabled={isReadOnly || tasksSaving}
+                style={{
+                  padding: "8px 10px", borderRadius: "4px",
+                  border: "1px solid #dfe1e6", fontSize: "14px", width: "100%",
+                  opacity: isReadOnly ? 0.6 : 1,
+                  cursor: isReadOnly ? "not-allowed" : "auto",
+                }}
+              />
 
               <label
                 style={{
