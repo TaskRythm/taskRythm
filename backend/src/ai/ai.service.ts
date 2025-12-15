@@ -78,4 +78,135 @@ export class AiService {
       throw new InternalServerErrorException('Failed to refine task');
     }
   }
+
+  // Feature 3: Project Health Doctor
+  async analyzeProjectHealth(tasks: any[]) {
+    this.logger.log(`Analyzing project health for ${tasks.length} tasks`);
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // Sanitize Data (Privacy & Token Efficiency)
+      // We convert the array to a simple string to save tokens
+      const projectSnapshot = tasks.map(t => 
+        `- [${t.status}] [${t.priority}] ${t.title}`
+      ).join('\n');
+
+      // The "Project Doctor" Prompt
+      const prompt = `
+        You are a Senior Agile Project Manager and Risk Analyst.
+        Analyze this project snapshot (Kanban Board):
+        
+        ${projectSnapshot}
+
+        Perform a health check based on these rules:
+        - Too many "HIGH" priority tasks in "TODO" is a risk.
+        - Too many "IN_PROGRESS" tasks at once suggests a bottleneck.
+        - Analyze TASK TITLES to identify technical debt or critical infrastructure risks.
+        - If mostly "DONE", the health is good.
+
+        Output ONLY raw JSON.
+        
+        JSON Schema:
+        { 
+          "score": number, // 0 to 100 (100 is perfect health)
+          "status": "String", // "Healthy", "At Risk", or "Critical"
+          "analysis": "String", // 1-2 sentences summarizing the situation
+          "recommendation": "String" // A specific action to fix the biggest problem
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      return this.cleanJson(result.response.text());
+
+    } catch (error) {
+      this.logger.error('Analyze Project Error', error);
+      throw new InternalServerErrorException('Failed to analyze project');
+    }
+  }
+
+  // Feature 4: My Writing Partner (Release Notes Generator)
+  async writeReleaseNotes(tasks: any[]) {
+    this.logger.log(`Generating release notes for ${tasks.length} tasks`);
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // Convert tasks to a text list
+      const taskList = tasks.map(t => `- ${t.title} (${t.tag || 'General'})`).join('\n');
+
+      // The "Technical Writer" Prompt
+      const prompt = `
+        You are a Senior Technical Writer.
+        Draft a professional "Sprint Release Report" based on these completed tasks:
+        
+        ${taskList}
+
+        Requirements:
+        1. Categorize the tasks smartly (e.g., "✨New Features", "🐛 Bug Fixes", "🔧 Improvements").
+        2. Write a short, exciting "Executive Summary" (2 sentences).
+        3. Use Markdown formatting for the main content.
+        
+        Output ONLY raw JSON.
+        
+        JSON Schema:
+        { 
+          "versionTitle": "String", // e.g. "Sprint 4: The Security Update"
+          "executiveSummary": "String",
+          "markdownContent": "String" // The full formatted report
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      return this.cleanJson(result.response.text());
+
+    } catch (error) {
+      this.logger.error('Writing Partner Error', error);
+      throw new InternalServerErrorException('Failed to generate report');
+    }
+  }
+
+  // Feature 5: The Project Brain (Context-Aware Chat)
+  async chatWithProject(question: string, tasks: any[]) {
+    this.logger.log(`Chatting with project context: ${tasks.length} tasks`);
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // 1. Create the Context (The "Pile of Papers")
+      const projectContext = tasks.map(t => 
+        `- Title: "${t.title}", Status: ${t.status}, Priority: ${t.priority}`
+      ).join('\n');
+
+      // 2. The "Silo" Prompt
+      const prompt = `
+        You are the AI Project Manager for this specific project.
+        
+        CONTEXT (Real-time Project Data):
+        ${projectContext}
+
+        USER QUESTION: "${question}"
+
+        INSTRUCTIONS:
+        1. Answer based ONLY on the context provided above.
+        2. If the user asks about something not in the list, say "I cannot answer that based on the current project data."
+        3. Be concise and professional.
+        4. Output JSON format.
+
+        JSON Schema:
+        {
+          "answer": "String" // Your helpful response
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      return this.cleanJson(result.response.text());
+
+    } catch (error) {
+      this.logger.error('Project Brain Error', error);
+      throw new InternalServerErrorException('Failed to chat with project');
+    }
+  }
+
+  
 }
