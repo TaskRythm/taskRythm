@@ -12,15 +12,19 @@ import { WorkspaceRole } from '@prisma/client';
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Ensure the user is a member of the workspace before allowing access.
-   */
   private async assertWorkspaceMembership(workspaceId: string, userId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { ownerId: true },
+    });
+
+    if (!workspace) throw new NotFoundException('Workspace not found');
+
+    if (workspace.ownerId === userId) return { role: WorkspaceRole.OWNER };
+
     const membership = await this.prisma.workspaceMember.findFirst({
-      where: {
-        workspaceId,
-        userId,
-      },
+      where: { workspaceId, userId },
+      select: { role: true },
     });
 
     if (!membership) {
@@ -30,16 +34,23 @@ export class ProjectsService {
     return membership;
   }
 
-  /**
-   * Ensure the user has one of the allowed roles in the workspace.
-   */
   private async assertWorkspaceRole(
     workspaceId: string,
     userId: string,
     allowedRoles: WorkspaceRole[],
   ) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { ownerId: true },
+    });
+
+    if (!workspace) throw new NotFoundException('Workspace not found');
+
+    if (workspace.ownerId === userId) return { role: WorkspaceRole.OWNER };
+
     const membership = await this.prisma.workspaceMember.findFirst({
       where: { workspaceId, userId },
+      select: { role: true },
     });
 
     if (!membership) {
@@ -53,9 +64,6 @@ export class ProjectsService {
     return membership;
   }
 
-  /**
-   * List all non-archived projects for a workspace that the user belongs to.
-   */
   async listByWorkspace(workspaceId: string, userId: string) {
     await this.assertWorkspaceMembership(workspaceId, userId);
 
@@ -65,9 +73,6 @@ export class ProjectsService {
     });
   }
 
-  /**
-   * Create a project inside a workspace the user belongs to.
-   */
   async createForWorkspace(dto: CreateProjectDto, userId: string) {
     await this.assertWorkspaceMembership(dto.workspaceId, userId);
 
@@ -81,60 +86,33 @@ export class ProjectsService {
     });
   }
 
-  /**
-   * Find a single project by id, making sure the user is in the workspace.
-   */
   async findOne(id: string, userId: string) {
-    const project = await this.prisma.project.findUnique({
-      where: { id },
-    });
-
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
+    const project = await this.prisma.project.findUnique({ where: { id } });
+    if (!project) throw new NotFoundException('Project not found');
 
     await this.assertWorkspaceMembership(project.workspaceId, userId);
-
     return project;
   }
 
-  /**
-   * Update project attributes.
-   */
   async update(id: string, dto: UpdateProjectDto, userId: string) {
-    const existing = await this.prisma.project.findUnique({
-      where: { id },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Project not found');
-    }
+    const existing = await this.prisma.project.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Project not found');
 
     await this.assertWorkspaceMembership(existing.workspaceId, userId);
 
     return this.prisma.project.update({
       where: { id },
       data: {
-        // If you allow workspaceId change, carefully validate; otherwise ignore dto.workspaceId
         name: dto.name ?? existing.name,
         description: dto.description ?? existing.description,
-        archived:
-          typeof dto.archived === 'boolean' ? dto.archived : existing.archived,
+        archived: typeof dto.archived === 'boolean' ? dto.archived : existing.archived,
       },
     });
   }
 
-  /**
-   * Archive (soft-delete) a project by setting archived = true.
-   */
   async archive(id: string, userId: string) {
-    const existing = await this.prisma.project.findUnique({
-      where: { id },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Project not found');
-    }
+    const existing = await this.prisma.project.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Project not found');
 
     await this.assertWorkspaceMembership(existing.workspaceId, userId);
 
@@ -144,53 +122,33 @@ export class ProjectsService {
     });
   }
 
-  /**
-   * Delete a project permanently with RBAC check.
-   * Only OWNER or ADMIN of the workspace can delete.
-   */
   async deleteProjectForUser(projectId: string, userId: string) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
+      select: { id: true, workspaceId: true },
     });
 
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
+    if (!project) throw new NotFoundException('Project not found');
 
-    // Check role in the parent workspace
     await this.assertWorkspaceRole(project.workspaceId, userId, [
       WorkspaceRole.OWNER,
       WorkspaceRole.ADMIN,
     ]);
 
-    return this.prisma.$transaction(async (tx) => {
-      // Remove related activity logs
-      await tx.activityLog.deleteMany({
-        where: { projectId: project.id },
-      });
-
-      // Remove subtasks of tasks in this project
-      const tasks = await tx.task.findMany({
-        where: { projectId: project.id },
-        select: { id: true },
-      });
-
-      if (tasks.length > 0) {
-        const taskIds = tasks.map((t) => t.id);
-        await tx.subtask.deleteMany({
-          where: { taskId: { in: taskIds } },
-        });
-      }
-
-      // Remove tasks
-      await tx.task.deleteMany({
-        where: { projectId: project.id },
-      });
-
-      // Finally remove the project itself
-      return tx.project.delete({
-        where: { id: project.id },
-      });
+    const tasks = await this.prisma.task.findMany({
+      where: { projectId: project.id },
+      select: { id: true },
     });
+
+    const taskIds = tasks.map((t) => t.id);
+
+    await this.prisma.$transaction([
+      this.prisma.activityLog.deleteMany({ where: { projectId: project.id } }),
+      ...(taskIds.length
+        ? [this.prisma.subtask.deleteMany({ where: { taskId: { in: taskIds } } })]
+        : []),
+      this.prisma.task.deleteMany({ where: { projectId: project.id } }),
+      this.prisma.project.delete({ where: { id: project.id } }),
+    ]);
   }
 }

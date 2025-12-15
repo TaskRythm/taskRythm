@@ -9,6 +9,19 @@ import {
 } from "@/store/workspaceStore";
 import { fetchWorkspaces, createWorkspace } from "@/api/workspaces";
 
+/**
+ * IMPORTANT:
+ * Backend might return role as "OWNER" or "owner" (or mixed).
+ * Frontend RBAC checks require uppercase.
+ */
+function normalizeRole(role: any): WorkspaceRole {
+  const r = String(role || "OWNER").toUpperCase();
+  if (r === "OWNER" || r === "ADMIN" || r === "MEMBER" || r === "VIEWER") {
+    return r as WorkspaceRole;
+  }
+  return "VIEWER";
+}
+
 function normalizeList(items: any[]): WorkspaceMembership[] {
   if (!Array.isArray(items)) return [];
 
@@ -17,7 +30,7 @@ function normalizeList(items: any[]): WorkspaceMembership[] {
     if (item.workspace) {
       return {
         workspaceId: item.workspaceId ?? item.workspace.id,
-        role: (item.role as WorkspaceRole) ?? "OWNER",
+        role: normalizeRole(item.role),
         workspace: {
           id: item.workspace.id,
           name: item.workspace.name,
@@ -30,7 +43,7 @@ function normalizeList(items: any[]): WorkspaceMembership[] {
     // Case 2: backend returns plain workspace { id, name, slug, createdAt }
     return {
       workspaceId: item.id,
-      role: (item.role as WorkspaceRole) ?? "OWNER",
+      role: normalizeRole(item.role),
       workspace: {
         id: item.id,
         name: item.name,
@@ -66,8 +79,12 @@ export function useWorkspaces() {
 
       setWorkspaces(normalized);
 
-      // Auto-select first workspace if nothing selected yet
-      if (!activeWorkspaceId && normalized.length > 0) {
+      // Keep current selection if it still exists, otherwise select first.
+      const stillExists =
+        activeWorkspaceId &&
+        normalized.some((w) => w.workspaceId === activeWorkspaceId);
+
+      if ((!activeWorkspaceId || !stillExists) && normalized.length > 0) {
         setActiveWorkspace(normalized[0].workspaceId);
       }
 
@@ -83,6 +100,7 @@ export function useWorkspaces() {
   const newWorkspace = async (body: { name: string; description?: string }) => {
     try {
       setCreating(true);
+
       const ws = await createWorkspace(callApi, body);
       const [membership] = normalizeList([ws]);
 
@@ -107,6 +125,7 @@ export function useWorkspaces() {
     if (isAuthenticated) {
       void load();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
   return {

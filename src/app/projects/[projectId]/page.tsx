@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+
 import { refineTask } from "@/api/ai";
 import { useAuth } from "@/hooks/useAuth";
 import { Sparkles, Loader2 } from "lucide-react";
@@ -10,6 +11,8 @@ import {
   useWorkspaceStore,
   type WorkspaceRole,
 } from "@/store/workspaceStore";
+
+import { useWorkspaces } from "@/hooks/useWorkspaces"; // ✅ YOUR FIX (hydrate workspace store on refresh)
 import { useProjects } from "@/hooks/useProjects";
 import { useTasks } from "@/hooks/useTasks";
 
@@ -68,12 +71,13 @@ const PRIORITY_COLORS: Record<TaskPriority, string> = {
   HIGH: "#de350b",
 };
 
-
-
 export default function ProjectPage() {
   const params = useParams() as { projectId: string };
   const router = useRouter();
   const projectId = params.projectId;
+
+  // ✅ YOUR FIX: make sure workspace store is hydrated even after refresh/deep-link
+  useWorkspaces();
 
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { projects, loading: projectsLoading } = useProjects();
@@ -121,8 +125,7 @@ export default function ProjectPage() {
 
   // Workspace membership info (for displaying role only)
   const currentWorkspaceMembership = useMemo(
-    () =>
-      workspaces.find((w) => w.workspaceId === activeWorkspaceId) ?? null,
+    () => workspaces.find((w) => w.workspaceId === activeWorkspaceId) ?? null,
     [workspaces, activeWorkspaceId],
   );
 
@@ -133,63 +136,6 @@ export default function ProjectPage() {
     () => projects.find((p: any) => p.id === projectId),
     [projects, projectId],
   );
-
-  const [isRefining, setIsRefining] = useState(false);
-  const { getAccessTokenSilently } = useAuth();
-
-
-  // 👇 FEATURE 2: THE MANAGER (Refine Task)
- const handleRefineTask = async () => {
-    // 1. Safety check
-    if (!editTitle || !editTitle.trim()) return;
-    
-    setIsRefining(true);
-    setEditError(null);
-
-    try {
-      const token = await getAccessTokenSilently();
-      const result = await refineTask(editTitle, token);
-
-      // 2. Update Form Fields
-      setEditTitle(result.newTitle || editTitle); 
-      setEditDesc(result.description || ""); 
-      
-      if (result.priority) {
-        const prio = result.priority.toUpperCase();
-        if (["LOW", "MEDIUM", "HIGH"].includes(prio)) {
-          setEditPriority(prio as TaskPriority);
-        }
-      }
-
-      // 3. Add Subtasks & Update UI Instantly
-      if (selectedTask && result.subtasks && Array.isArray(result.subtasks)) {
-        for (const subTitle of result.subtasks) {
-           if (subTitle) {
-             // A. Add to Database
-             const newSubtask = await addSubtask(selectedTask.id, subTitle);
-             
-             // B. Update Local Modal State (INSTANT FEEDBACK)
-             setSelectedTask(prev => {
-               if (!prev) return null;
-               return {
-                 ...prev,
-                 subtasks: [...(prev.subtasks || []), newSubtask]
-               };
-             });
-           }
-        }
-        
-        // C. Sync background data
-        if (reloadTasks) await reloadTasks();
-      }
-
-    } catch (err) {
-      console.error("AI Refine Error:", err);
-      setEditError("Failed to refine task. Please try again.");
-    } finally {
-      setIsRefining(false);
-    }
-  };
 
   const workspaceName = useMemo(() => {
     const ws =
@@ -205,15 +151,68 @@ export default function ProjectPage() {
     }
   }, [projectsLoading, project]);
 
+  // ✅ FRIEND FEATURE: AI refine task
+  const [isRefining, setIsRefining] = useState(false);
+  const { getAccessTokenSilently } = useAuth();
+
+  const selectedTaskHasChildren = useMemo(
+    () => (selectedTask ? tasks.some((t) => t.parentTaskId === selectedTask.id) : false),
+    [tasks, selectedTask],
+  );
+
+  const handleRefineTask = async () => {
+    if (!editTitle || !editTitle.trim()) return;
+
+    setIsRefining(true);
+    setEditError(null);
+
+    try {
+      const token = await getAccessTokenSilently();
+      const result = await refineTask(editTitle, token);
+
+      setEditTitle(result.newTitle || editTitle);
+      setEditDesc(result.description || "");
+
+      if (result.priority) {
+        const prio = String(result.priority).toUpperCase();
+        if (["LOW", "MEDIUM", "HIGH"].includes(prio)) {
+          setEditPriority(prio as TaskPriority);
+        }
+      }
+
+      if (selectedTask && result.subtasks && Array.isArray(result.subtasks)) {
+        for (const subTitle of result.subtasks) {
+          if (!subTitle) continue;
+
+          const newSubtask = await addSubtask(selectedTask.id, subTitle);
+
+          setSelectedTask((prev) => {
+            if (!prev) return null;
+            return { ...prev, subtasks: [...(prev.subtasks || []), newSubtask] };
+          });
+        }
+
+        if (typeof reloadTasks === "function") {
+          await reloadTasks();
+        }
+      }
+    } catch (err) {
+      console.error("AI Refine Error:", err);
+      setEditError("Failed to refine task. Please try again.");
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
+
     if (!canEditTasks) {
-      setLocalError(
-        "You don't have permission to create tasks in this workspace.",
-      );
+      setLocalError("You don't have permission to create tasks in this workspace.");
       return;
     }
+
     try {
       setLocalError(null);
       await createTask({
@@ -233,6 +232,7 @@ export default function ProjectPage() {
     direction: "left" | "right",
   ) => {
     if (!canEditTasks) return;
+
     const index = STATUS_FLOW.indexOf(current);
     if (index === -1) return;
 
@@ -276,13 +276,13 @@ export default function ProjectPage() {
   });
 
   const columns: { key: TaskStatus; title: string; accent: string }[] = [
-    { key: "TODO",        title: "To do",       accent: "#dfe1e6" },
+    { key: "TODO", title: "To do", accent: "#dfe1e6" },
     { key: "IN_PROGRESS", title: "In progress", accent: "#deebff" },
-    { key: "BLOCKED",     title: "Blocked",     accent: "#ffebe6" },
-    { key: "DONE",        title: "Done",        accent: "#e3fcef" },
+    { key: "BLOCKED", title: "Blocked", accent: "#ffebe6" },
+    { key: "DONE", title: "Done", accent: "#e3fcef" },
   ];
 
-  // Eligible parents and whether selected task has children
+  // Eligible parents
   const eligibleParents = useMemo(
     () =>
       selectedTask
@@ -293,14 +293,6 @@ export default function ProjectPage() {
               t.id !== selectedTask.id,
           )
         : [],
-    [tasks, selectedTask],
-  );
-
-  const selectedTaskHasChildren = useMemo(
-    () =>
-      selectedTask
-        ? tasks.some((t) => t.parentTaskId === selectedTask.id)
-        : false,
     [tasks, selectedTask],
   );
 
@@ -331,6 +323,7 @@ export default function ProjectPage() {
 
   const handleCloseTaskModal = () => {
     if (tasksSaving) return;
+
     setSelectedTask(null);
     setEditTitle("");
     setEditDesc("");
@@ -357,7 +350,6 @@ export default function ProjectPage() {
 
     const hoursRaw = editHours.trim();
     const minutesRaw = editMinutes.trim();
-
     let totalMinutes: number | null = null;
 
     if (hoursRaw !== "" || minutesRaw !== "") {
@@ -365,9 +357,7 @@ export default function ProjectPage() {
       const m = minutesRaw === "" ? 0 : Number(minutesRaw);
 
       if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || m < 0 || m > 59) {
-        setEditError(
-          "Estimate must be a valid time (hours ≥ 0, minutes between 0–59).",
-        );
+        setEditError("Estimate must be a valid time (hours ≥ 0, minutes between 0–59).");
         return;
       }
 
@@ -404,6 +394,7 @@ export default function ProjectPage() {
 
   const handleDeleteTask = async () => {
     if (!selectedTask) return;
+
     try {
       setEditError(null);
       await deleteTask(selectedTask.id);
@@ -425,10 +416,7 @@ export default function ProjectPage() {
       const created = await addSubtask(selectedTask.id, title);
       setSelectedTask((prev) =>
         prev
-          ? {
-              ...prev,
-              subtasks: [...(prev.subtasks ?? []), created],
-            }
+          ? { ...prev, subtasks: [...(prev.subtasks ?? []), created] }
           : prev,
       );
       setNewSubtaskTitle("");
@@ -439,10 +427,12 @@ export default function ProjectPage() {
 
   const handleToggleSubtask = async (subtaskId: string, isCompleted: boolean) => {
     if (!selectedTask) return;
+
     try {
       const updated = await updateSubtask(selectedTask.id, subtaskId, {
         isCompleted: !isCompleted,
       });
+
       setSelectedTask((prev) =>
         prev
           ? {
@@ -460,14 +450,12 @@ export default function ProjectPage() {
 
   const handleRemoveSubtask = async (subtaskId: string) => {
     if (!selectedTask) return;
+
     try {
       await removeSubtask(selectedTask.id, subtaskId);
       setSelectedTask((prev) =>
         prev
-          ? {
-              ...prev,
-              subtasks: (prev.subtasks ?? []).filter((s) => s.id !== subtaskId),
-            }
+          ? { ...prev, subtasks: (prev.subtasks ?? []).filter((s) => s.id !== subtaskId) }
           : prev,
       );
     } catch {
@@ -599,8 +587,7 @@ export default function ProjectPage() {
                   color: "#6b778c",
                 }}
               >
-                You have view-only access in this workspace. Task editing is
-                disabled.
+                You have view-only access in this workspace. Task editing is disabled.
               </div>
             )}
 
@@ -713,12 +700,7 @@ export default function ProjectPage() {
                                 {task.title}
                               </div>
                               {task.description && (
-                                <div
-                                  style={{
-                                    fontSize: "12px",
-                                    color: "#6b778c",
-                                  }}
-                                >
+                                <div style={{ fontSize: "12px", color: "#6b778c" }}>
                                   {task.description}
                                 </div>
                               )}
@@ -756,22 +738,13 @@ export default function ProjectPage() {
                                           padding: "2px 6px",
                                           borderRadius: "999px",
                                           background:
-                                            ISSUE_TYPE_COLORS[
-                                              task.type as TaskType
-                                            ] + "1a",
-                                          color:
-                                            ISSUE_TYPE_COLORS[
-                                              task.type as TaskType
-                                            ],
+                                            ISSUE_TYPE_COLORS[task.type as TaskType] + "1a",
+                                          color: ISSUE_TYPE_COLORS[task.type as TaskType],
                                           textTransform: "uppercase",
                                           letterSpacing: "0.04em",
                                         }}
                                       >
-                                        {
-                                          ISSUE_TYPE_LABELS[
-                                            task.type as TaskType
-                                          ]
-                                        }
+                                        {ISSUE_TYPE_LABELS[task.type as TaskType]}
                                       </span>
                                     )}
 
@@ -786,9 +759,7 @@ export default function ProjectPage() {
                                             color: "#42526e",
                                           }}
                                         >
-                                          {formatEstimateMinutes(
-                                            task.estimateMinutes,
-                                          )}
+                                          {formatEstimateMinutes(task.estimateMinutes)}
                                         </span>
                                       )}
 
@@ -799,32 +770,18 @@ export default function ProjectPage() {
                                           padding: "2px 6px",
                                           borderRadius: "999px",
                                           background:
-                                            PRIORITY_COLORS[
-                                              task.priority as TaskPriority
-                                            ] + "1a",
-                                          color:
-                                            PRIORITY_COLORS[
-                                              task.priority as TaskPriority
-                                            ],
+                                            PRIORITY_COLORS[task.priority as TaskPriority] + "1a",
+                                          color: PRIORITY_COLORS[task.priority as TaskPriority],
                                           fontWeight: 600,
                                         }}
                                       >
-                                        {
-                                          PRIORITY_LABELS[
-                                            task.priority as TaskPriority
-                                          ]
-                                        }
+                                        {PRIORITY_LABELS[task.priority as TaskPriority]}
                                       </span>
                                     )}
                                   </div>
 
                                   {task.dueDate && (
-                                    <div
-                                      style={{
-                                        fontSize: "10px",
-                                        color: "#6b778c",
-                                      }}
-                                    >
+                                    <div style={{ fontSize: "10px", color: "#6b778c" }}>
                                       Due {formatDate(task.dueDate)}
                                     </div>
                                   )}
@@ -850,13 +807,7 @@ export default function ProjectPage() {
                                     {task.status}
                                   </div>
 
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: "4px",
-                                    }}
-                                  >
-                                    {/* Move left */}
+                                  <div style={{ display: "flex", gap: "4px" }}>
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -886,7 +837,6 @@ export default function ProjectPage() {
                                       ←
                                     </button>
 
-                                    {/* Move right */}
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -896,8 +846,7 @@ export default function ProjectPage() {
                                       disabled={
                                         tasksSaving ||
                                         !canEditTasks ||
-                                        STATUS_FLOW.indexOf(task.status) ===
-                                          STATUS_FLOW.length - 1
+                                        STATUS_FLOW.indexOf(task.status) === STATUS_FLOW.length - 1
                                       }
                                       style={{
                                         padding: "2px 6px",
@@ -909,8 +858,7 @@ export default function ProjectPage() {
                                         cursor:
                                           tasksSaving ||
                                           !canEditTasks ||
-                                          STATUS_FLOW.indexOf(task.status) ===
-                                            STATUS_FLOW.length - 1
+                                          STATUS_FLOW.indexOf(task.status) === STATUS_FLOW.length - 1
                                             ? "not-allowed"
                                             : "pointer",
                                       }}
@@ -933,20 +881,8 @@ export default function ProjectPage() {
                                     gap: "4px",
                                   }}
                                 >
-                                  <div
-                                    style={{
-                                      fontSize: "11px",
-                                      fontWeight: 500,
-                                      color: "#6b778c",
-                                    }}
-                                  >
-                                    Child tasks (
-                                    {
-                                      children.filter(
-                                        (c) => c.status === "DONE",
-                                      ).length
-                                    }
-                                    /{children.length})
+                                  <div style={{ fontSize: "11px", fontWeight: 500, color: "#6b778c" }}>
+                                    Child tasks ({children.filter((c) => c.status === "DONE").length}/{children.length})
                                   </div>
 
                                   {children.map((child) => (
@@ -1043,21 +979,12 @@ export default function ProjectPage() {
                 </h3>
 
                 {(localError || tasksError) && (
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: "#de350b",
-                      marginBottom: "8px",
-                    }}
-                  >
+                  <div style={{ fontSize: "13px", color: "#de350b", marginBottom: "8px" }}>
                     {localError || tasksError}
                   </div>
                 )}
 
-                <form
-                  onSubmit={handleCreateTask}
-                  style={{ display: "grid", gap: "8px" }}
-                >
+                <form onSubmit={handleCreateTask} style={{ display: "grid", gap: "8px" }}>
                   <input
                     type="text"
                     placeholder="Task title"
@@ -1114,8 +1041,7 @@ export default function ProjectPage() {
                   color: "#6b778c",
                 }}
               >
-                You can view tasks in this project, but you don&apos;t have
-                permission to create or edit them in this workspace.
+                You can view tasks in this project, but you don&apos;t have permission to create or edit them in this workspace.
               </div>
             )}
           </div>
@@ -1190,69 +1116,61 @@ export default function ProjectPage() {
                 marginBottom: "16px",
               }}
             >
-              Edit title, description, status, estimate, priority, type and
-              subtasks.
+              Edit title, description, status, estimate, priority, type and subtasks.
             </p>
 
             {editError && (
-              <div
-                style={{
-                  marginBottom: "10px",
-                  fontSize: "13px",
-                  color: "#de350b",
-                }}
-              >
+              <div style={{ marginBottom: "10px", fontSize: "13px", color: "#de350b" }}>
                 {editError}
               </div>
             )}
 
-            <form
-              onSubmit={handleSaveTask}
-              style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-            >
-              {/* 👇 NEW HEADER WITH MAGIC BUTTON */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <form onSubmit={handleSaveTask} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {/* Title header + AI button */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                 <span style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
                   Title
                 </span>
-                
+
                 <button
                   type="button"
                   onClick={handleRefineTask}
                   disabled={isRefining || isReadOnly || !editTitle.trim()}
                   style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "#9333ea", fontSize: "12px", fontWeight: 600,
-                    display: "flex", alignItems: "center", gap: "4px",
-                    transition: "color 0.2s"
+                    background: "none",
+                    border: "none",
+                    cursor: isRefining || isReadOnly || !editTitle.trim() ? "not-allowed" : "pointer",
+                    color: "#9333ea",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    opacity: isRefining || isReadOnly || !editTitle.trim() ? 0.6 : 1,
                   }}
                 >
-                  {isRefining ? <Loader2 size={14} className="animate-spin"/> : <Sparkles size={14} />}
+                  {isRefining ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                   {isRefining ? "Refining..." : "Refine with AI"}
                 </button>
               </div>
 
-              {/* The Input Field (Same as before, just removed the label wrapper) */}
               <input
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 disabled={isReadOnly || tasksSaving}
                 style={{
-                  padding: "8px 10px", borderRadius: "4px",
-                  border: "1px solid #dfe1e6", fontSize: "14px", width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: "4px",
+                  border: "1px solid #dfe1e6",
+                  fontSize: "14px",
+                  width: "100%",
                   opacity: isReadOnly ? 0.6 : 1,
                   cursor: isReadOnly ? "not-allowed" : "auto",
                 }}
               />
 
-              <label
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  color: "#6b778c",
-                }}
-              >
+              <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
                 Description
                 <textarea
                   value={editDesc}
@@ -1272,26 +1190,16 @@ export default function ProjectPage() {
                 />
               </label>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "10px",
-                }}
-              >
-                <label
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    color: "#6b778c",
-                  }}
-                >
+              {/* (rest of modal stays same as your friend's version) */}
+              {/* ... kept exactly as before ... */}
+
+              {/* Status + Priority */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
                   Status
                   <select
                     value={editStatus}
-                    onChange={(e) =>
-                      setEditStatus(e.target.value as TaskStatus)
-                    }
+                    onChange={(e) => setEditStatus(e.target.value as TaskStatus)}
                     disabled={isReadOnly || tasksSaving}
                     style={{
                       marginTop: "4px",
@@ -1312,19 +1220,11 @@ export default function ProjectPage() {
                   </select>
                 </label>
 
-                <label
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    color: "#6b778c",
-                  }}
-                >
+                <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
                   Priority
                   <select
                     value={editPriority}
-                    onChange={(e) =>
-                      setEditPriority(e.target.value as TaskPriority)
-                    }
+                    onChange={(e) => setEditPriority(e.target.value as TaskPriority)}
                     disabled={isReadOnly || tasksSaving}
                     style={{
                       marginTop: "4px",
@@ -1344,20 +1244,9 @@ export default function ProjectPage() {
                 </label>
               </div>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "10px",
-                }}
-              >
-                <label
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    color: "#6b778c",
-                  }}
-                >
+              {/* Due date + estimate */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
                   Due date
                   <input
                     type="date"
@@ -1376,21 +1265,9 @@ export default function ProjectPage() {
                   />
                 </label>
 
-                <label
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    color: "#6b778c",
-                  }}
-                >
+                <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
                   Estimate (time)
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "6px",
-                      marginTop: "4px",
-                    }}
-                  >
+                  <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
                     <input
                       type="number"
                       min={0}
@@ -1430,13 +1307,8 @@ export default function ProjectPage() {
                 </label>
               </div>
 
-              <label
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  color: "#6b778c",
-                }}
-              >
+              {/* Issue type */}
+              <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
                 Issue type
                 <select
                   value={editType}
@@ -1462,19 +1334,11 @@ export default function ProjectPage() {
               </label>
 
               {/* Parent task selector */}
-              <label
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  color: "#6b778c",
-                }}
-              >
+              <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
                 Parent task
                 <select
                   value={editParentTaskId || ""}
-                  onChange={(e) =>
-                    setEditParentTaskId(e.target.value || null)
-                  }
+                  onChange={(e) => setEditParentTaskId(e.target.value || null)}
                   disabled={selectedTaskHasChildren || isReadOnly || tasksSaving}
                   style={{
                     marginTop: "4px",
@@ -1482,13 +1346,9 @@ export default function ProjectPage() {
                     borderRadius: "4px",
                     border: "1px solid #dfe1e6",
                     fontSize: "14px",
-                    background:
-                      selectedTaskHasChildren || isReadOnly ? "#f4f5f7" : "white",
+                    background: selectedTaskHasChildren || isReadOnly ? "#f4f5f7" : "white",
                     opacity: selectedTaskHasChildren || isReadOnly ? 0.6 : 1,
-                    cursor:
-                      selectedTaskHasChildren || isReadOnly
-                        ? "not-allowed"
-                        : "auto",
+                    cursor: selectedTaskHasChildren || isReadOnly ? "not-allowed" : "auto",
                   }}
                 >
                   <option value="">No parent (top-level)</option>
@@ -1499,87 +1359,37 @@ export default function ProjectPage() {
                   ))}
                 </select>
                 {selectedTaskHasChildren && (
-                  <div
-                    style={{
-                      marginTop: "4px",
-                      fontSize: "11px",
-                      color: "#6b778c",
-                    }}
-                  >
-                    This task already has child tasks and cannot be converted
-                    into a child task.
+                  <div style={{ marginTop: "4px", fontSize: "11px", color: "#6b778c" }}>
+                    This task already has child tasks and cannot be converted into a child task.
                   </div>
                 )}
               </label>
 
               {/* Subtasks */}
-              <div
-                style={{
-                  marginTop: "6px",
-                  paddingTop: "10px",
-                  borderTop: "1px solid #ebecf0",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    color: "#6b778c",
-                    marginBottom: "6px",
-                  }}
-                >
+              <div style={{ marginTop: "6px", paddingTop: "10px", borderTop: "1px solid #ebecf0" }}>
+                <div style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c", marginBottom: "6px" }}>
                   Subtasks
                 </div>
 
                 {(selectedTask.subtasks ?? []).length === 0 ? (
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      color: "#6b778c",
-                      fontStyle: "italic",
-                      marginBottom: "8px",
-                    }}
-                  >
+                  <div style={{ fontSize: "12px", color: "#6b778c", fontStyle: "italic", marginBottom: "8px" }}>
                     No subtasks yet.
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                      marginBottom: "8px",
-                    }}
-                  >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "8px" }}>
                     {(selectedTask.subtasks ?? []).map((sub) => (
-                      <div
-                        key={sub.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          fontSize: "12px",
-                        }}
-                      >
+                      <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px" }}>
                         <input
                           type="checkbox"
                           checked={sub.isCompleted}
                           disabled={isReadOnly || tasksSaving}
-                          onChange={() =>
-                            !isReadOnly &&
-                            handleToggleSubtask(sub.id, sub.isCompleted)
-                          }
-                          style={{
-                            cursor: isReadOnly ? "not-allowed" : "pointer",
-                            opacity: isReadOnly ? 0.6 : 1,
-                          }}
+                          onChange={() => !isReadOnly && handleToggleSubtask(sub.id, sub.isCompleted)}
+                          style={{ cursor: isReadOnly ? "not-allowed" : "pointer", opacity: isReadOnly ? 0.6 : 1 }}
                         />
                         <span
                           style={{
                             flex: 1,
-                            textDecoration: sub.isCompleted
-                              ? "line-through"
-                              : "none",
+                            textDecoration: sub.isCompleted ? "line-through" : "none",
                             color: sub.isCompleted ? "#6b778c" : "#172b4d",
                             opacity: isReadOnly ? 0.6 : 1,
                           }}
@@ -1595,10 +1405,7 @@ export default function ProjectPage() {
                             background: "transparent",
                             color: "#de350b",
                             fontSize: "11px",
-                            cursor:
-                              isReadOnly || tasksSaving
-                                ? "not-allowed"
-                                : "pointer",
+                            cursor: isReadOnly || tasksSaving ? "not-allowed" : "pointer",
                             opacity: isReadOnly ? 0.6 : 1,
                           }}
                         >
@@ -1609,13 +1416,7 @@ export default function ProjectPage() {
                   </div>
                 )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "6px",
-                    marginTop: "4px",
-                  }}
-                >
+                <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
                   <input
                     type="text"
                     placeholder="Add subtask"
@@ -1635,23 +1436,15 @@ export default function ProjectPage() {
                   <button
                     type="button"
                     onClick={handleAddSubtask}
-                    disabled={
-                      isReadOnly || tasksSaving || !newSubtaskTitle.trim()
-                    }
+                    disabled={isReadOnly || tasksSaving || !newSubtaskTitle.trim()}
                     style={{
                       padding: "6px 10px",
                       fontSize: "12px",
                       borderRadius: "4px",
                       border: "none",
-                      background:
-                        isReadOnly || tasksSaving || !newSubtaskTitle.trim()
-                          ? "#c1c7d0"
-                          : "#0052cc",
+                      background: isReadOnly || tasksSaving || !newSubtaskTitle.trim() ? "#c1c7d0" : "#0052cc",
                       color: "white",
-                      cursor:
-                        isReadOnly || tasksSaving || !newSubtaskTitle.trim()
-                          ? "default"
-                          : "pointer",
+                      cursor: isReadOnly || tasksSaving || !newSubtaskTitle.trim() ? "default" : "pointer",
                     }}
                   >
                     Add
@@ -1659,15 +1452,8 @@ export default function ProjectPage() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  marginTop: "16px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: "8px",
-                  alignItems: "center",
-                }}
-              >
+              {/* Footer buttons */}
+              <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center" }}>
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
@@ -1679,8 +1465,7 @@ export default function ProjectPage() {
                     border: "1px solid #de350b",
                     background: "white",
                     color: "#de350b",
-                    cursor:
-                      isReadOnly || tasksSaving ? "not-allowed" : "pointer",
+                    cursor: isReadOnly || tasksSaving ? "not-allowed" : "pointer",
                     opacity: isReadOnly ? 0.6 : 1,
                   }}
                 >
@@ -1711,15 +1496,9 @@ export default function ProjectPage() {
                       fontSize: "14px",
                       borderRadius: "4px",
                       border: "none",
-                      background:
-                        isReadOnly || tasksSaving || !editTitle.trim()
-                          ? "#c1c7d0"
-                          : "#0052cc",
+                      background: isReadOnly || tasksSaving || !editTitle.trim() ? "#c1c7d0" : "#0052cc",
                       color: "white",
-                      cursor:
-                        isReadOnly || tasksSaving || !editTitle.trim()
-                          ? "default"
-                          : "pointer",
+                      cursor: isReadOnly || tasksSaving || !editTitle.trim() ? "default" : "pointer",
                       opacity: isReadOnly ? 0.6 : 1,
                     }}
                   >
@@ -1729,15 +1508,8 @@ export default function ProjectPage() {
               </div>
 
               {isReadOnly && (
-                <p
-                  style={{
-                    marginTop: 8,
-                    fontSize: 11,
-                    color: "#6b778c",
-                  }}
-                >
-                  You have read-only access in this workspace; task changes are
-                  disabled.
+                <p style={{ marginTop: 8, fontSize: 11, color: "#6b778c" }}>
+                  You have read-only access in this workspace; task changes are disabled.
                 </p>
               )}
             </form>
@@ -1768,30 +1540,13 @@ export default function ProjectPage() {
               boxShadow: "0 12px 32px rgba(9,30,66,0.35)",
             }}
           >
-            <h3
-              style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                color: "#172b4d",
-                marginBottom: "8px",
-              }}
-            >
+            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#172b4d", marginBottom: "8px" }}>
               Delete task?
             </h3>
-            <p
-              style={{
-                fontSize: "14px",
-                color: "#6b778c",
-                marginBottom: "20px",
-              }}
-            >
-              Are you sure you want to delete{" "}
-              <strong>"{selectedTask.title}"</strong>? This action cannot be
-              undone.
+            <p style={{ fontSize: "14px", color: "#6b778c", marginBottom: "20px" }}>
+              Are you sure you want to delete <strong>"{selectedTask.title}"</strong>? This action cannot be undone.
             </p>
-            <div
-              style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}
-            >
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}

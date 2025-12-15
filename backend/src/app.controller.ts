@@ -1,11 +1,11 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from './auth/jwt.guard';
 import { CurrentUser } from './auth/current-user.decorator';
-import { Permissions } from './auth/permissions.decorator';
-import { PermissionsGuard } from './auth/permissions.guard';
+import { Public } from './auth/public.decorator';
 
 @Controller()
 export class AppController {
+  @Public()
   @Get('health')
   health() {
     return { ok: true };
@@ -16,12 +16,4 @@ export class AppController {
   me(@CurrentUser() user: any) {
     return { ok: true, user };
   }
-
-  // RBAC-protected route
-  // @UseGuards(JwtAuthGuard, PermissionsGuard)
-  // @Permissions('read:projects')
-  // @Get('projects')
-  // listProjects() {
-  //   return [{ id: 1, name: 'Sample' }];
-  // }
 }
