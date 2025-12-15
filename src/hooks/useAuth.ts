@@ -9,7 +9,7 @@ export const useAuth = () => {
     isLoading,
     loginWithRedirect,
     logout,
-    getAccessTokenSilently,
+    getAccessTokenSilently, // 👈 We extract this from Auth0
   } = useAuth0();
 
   // Generic authenticated API helper
@@ -41,7 +41,6 @@ export const useAuth = () => {
       );
     }
 
-    // 204 No Content etc.
     if (response.status === 204) return null;
 
     return response.json();
@@ -71,5 +70,6 @@ export const useAuth = () => {
     login,
     logout: logoutFn,
     callApi,
+    getAccessTokenSilently, // 👈 ADD THIS LINE so other components can use it
   };
 };
