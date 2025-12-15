@@ -15,6 +15,7 @@ import { WorkspaceHeader } from "./WorkspaceHeader";
 import WorkspaceMembersCard from "./WorkspaceMembersCard";
 import WorkspaceSettings from "./WorkspaceSettings";
 import ProjectDeleteButton from "./ProjectDeleteButton";
+import ProjectHealthModal from "./ProjectHealthModal";
 
 // 👇 Imports for AI & API
 import { useAuth } from "@/hooks/useAuth";
@@ -197,7 +198,7 @@ export default function Dashboard({ user }: DashboardProps) {
     }
   };
 
-  // 👇 FEATURE 2: Doctor Logic
+  // 👇 FEATURE 3: Doctor Logic
   const handleCheckHealth = async (projectId: string, name: string) => {
     setAnalyzingProjectName(name);
     setHealthModalOpen(true);
@@ -208,9 +209,10 @@ export default function Dashboard({ user }: DashboardProps) {
       const token = await getAccessTokenSilently();
       if (!token) throw new Error("No auth token");
 
+      // Fetch tasks and send to AI
       const tasks = await fetchProjectTasks(projectId, token);
       const analysis = await analyzeProjectHealth(tasks, token);
-
+      
       setHealthData(analysis);
     } catch (error) {
       console.error("Health Check Failed", error);
@@ -405,9 +407,9 @@ export default function Dashboard({ user }: DashboardProps) {
       {/* Feature 1: AI Planner Modal */}
       <AiProjectModal isOpen={showAiModal} onClose={() => { setShowAiModal(false); setSelectedAiProjectId(null); }} onAccept={handleAiAccept} />
 
-      {/* Feature 2: Doctor Modal 
+      {/* Feature 2: Doctor Modal */}
       <ProjectHealthModal isOpen={healthModalOpen} onClose={() => setHealthModalOpen(false)} projectName={analyzingProjectName} data={healthData} loading={healthLoading} />
-      */}
+      
     </div>
   );
 }
