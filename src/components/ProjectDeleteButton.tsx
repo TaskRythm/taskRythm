@@ -112,21 +112,21 @@ export function ProjectDeleteButton({
         onClick={handleDeleteProject}
         disabled={isDeleting}
         style={{
+          padding: "8px",
+          background: "transparent",
+          color: "#cc0000ff",
+          border: "1.5px solid #cc0000ff",
+          borderRadius: "6px",
+          cursor: "pointer",
           display: "flex",
           alignItems: "center",
-          gap: "4px",
-          padding: "4px 8px",
-          fontSize: "11px",
-          borderRadius: "4px",
-          border: "1px solid #de350b",
-          color: "#de350b",
-          background: "white",
-          cursor: isDeleting ? "not-allowed" : "pointer",
-          fontWeight: 500,
+          justifyContent: "center"
         }}
+        aria-label="Delete Project"
+
       >
-        <Trash2 size={12} />
-        {isDeleting ? "..." : "Delete"}
+        <Trash2 size={16} />
+        {isDeleting ? "..." : ""}
       </button>
 
       {/* Confirmation Dialog */}
