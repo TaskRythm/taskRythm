@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   FolderKanban, Users, ClipboardList, BarChart3, Clock, Plus,
-  Sparkles, HeartPulse, Eye
+  Sparkles, HeartPulse, Eye, FileText
 } from "lucide-react";
 
 import WorkspaceSidebar from "./WorkspaceSidebar";
@@ -16,6 +16,8 @@ import WorkspaceMembersCard from "./WorkspaceMembersCard";
 import WorkspaceSettings from "./WorkspaceSettings";
 import ProjectDeleteButton from "./ProjectDeleteButton";
 import ProjectHealthModal from "./ProjectHealthModal";
+import { writeReleaseNotes } from "@/api/ai";
+import ReleaseNotesModal from "./ReleaseNotesModal";
 
 // 👇 Imports for AI & API
 import { useAuth } from "@/hooks/useAuth";
@@ -51,13 +53,15 @@ export default function Dashboard({ user }: DashboardProps) {
 
   // 👇 State for AI Modals
   const [showAiModal, setShowAiModal] = useState(false);
-  // 👇 NEW: Track which project launched the AI planner
   const [selectedAiProjectId, setSelectedAiProjectId] = useState<string | null>(null);
-
   const [healthModalOpen, setHealthModalOpen] = useState(false);
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthData, setHealthData] = useState<any>(null);
   const [analyzingProjectName, setAnalyzingProjectName] = useState("");
+  const [scribeModalOpen, setScribeModalOpen] = useState(false);
+  const [scribeLoading, setScribeLoading] = useState(false);
+  const [scribeContent, setScribeContent] = useState("");
+  const [scribeProjectName, setScribeProjectName] = useState("");
 
   const activeWorkspace =
     workspaces.find((w: any) => w.workspaceId === activeWorkspaceId) ??
@@ -212,7 +216,7 @@ export default function Dashboard({ user }: DashboardProps) {
       // Fetch tasks and send to AI
       const tasks = await fetchProjectTasks(projectId, token);
       const analysis = await analyzeProjectHealth(tasks, token);
-      
+
       setHealthData(analysis);
     } catch (error) {
       console.error("Health Check Failed", error);
@@ -221,6 +225,54 @@ export default function Dashboard({ user }: DashboardProps) {
     }
   };
 
+// 👇 FINAL CORRECTED VERSION for Feature 4
+  const handleScribe = async (projectId: string, name: string) => {
+    setScribeProjectName(name);
+    setScribeModalOpen(true);
+    setScribeLoading(true);
+    setScribeContent("");
+
+    try {
+      const token = await getAccessTokenSilently();
+      const rawTasks = await fetchProjectTasks(projectId, token);
+      
+      // 1. Sanitize Tasks
+      const cleanTasks = rawTasks.map((t: any) => ({
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        description: t.description || "",
+        tag: (Array.isArray(t.tags) && t.tags.length > 0) ? t.tags[0] : "General"
+      }));
+
+      // 2. Call API
+      const result = await writeReleaseNotes(cleanTasks, token);
+      
+      // 3. 🔍 CORRECTED EXTRACTION
+      // We found out your backend sends "markdownContent"
+      const text = 
+        result.markdownContent ||  // 👈 THIS is the correct field
+        result.report || 
+        result.content || 
+        result.result || 
+        (typeof result === 'string' ? result : null);
+
+      if (text) {
+        setScribeContent(text);
+      } else {
+        setScribeContent("Debug: The API returned data, but the frontend couldn't find the text field. Check console.");
+        console.warn("Unexpected JSON structure:", result);
+      }
+
+    } catch (error) {
+      console.error("Scribe Error", error);
+      setScribeContent("Failed to generate report. Please try again.");
+    } finally {
+      setScribeLoading(false);
+    }
+  };
+
+  
   // 👇 Helper to open AI modal for a specific project
   const openAiPlannerForProject = (projectId: string) => {
     setSelectedAiProjectId(projectId);
@@ -244,12 +296,13 @@ export default function Dashboard({ user }: DashboardProps) {
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               {canCreateProjects && (
                 <>
-                  {/* Removed Global AI Planner Button */}
                   <button onClick={handleOpenNewProject} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 20px", background: "linear-gradient(135deg, #0052cc 0%, #0065ff 100%)", color: "white", borderRadius: "8px", fontWeight: 600, cursor: "pointer", border: "none", boxShadow: "0 2px 8px rgba(0,82,204,0.3)", transition: "transform 0.15s ease, box-shadow 0.15s ease" }}>
                     <Plus size={18} /> New Project
                   </button>
+
                 </>
               )}
+
             </div>
           </div>
         </div>
@@ -295,8 +348,6 @@ export default function Dashboard({ user }: DashboardProps) {
                       <span style={{ display: "flex", alignItems: "center", gap: "4px" }}><Users size={14} /> {project.members ?? 0} members</span>
                     </div>
                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-
-                      {/* 👇 AI PLANNER BUTTON (Moved Here) */}
                       <button
                         onClick={() => openAiPlannerForProject(project.id)}
                         title="AI Planner: Add Tasks"
@@ -304,21 +355,30 @@ export default function Dashboard({ user }: DashboardProps) {
                       >
                         <Sparkles size={16} />
                       </button>
-
                       <button onClick={() => handleCheckHealth(project.id, project.name)} title="AI Project Doctor: Check Health" style={{ padding: "8px", background: "#fff0f6", color: "#c41d7f", border: "1px solid #ffadd2", borderRadius: "6px", cursor: "pointer", transition: "all 0.15s ease", display: "flex", alignItems: "center" }}>
                         <HeartPulse size={16} />
                       </button>
+
+
+                      {/* 👇 NEW SCRIBE BUTTON (Release Notes) */}
+                      <button
+                        onClick={() => handleScribe(project.id, project.name)}
+                        title="The Scribe: Generate Release Notes"
+                        style={{ padding: "8px", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", borderRadius: "6px", cursor: "pointer", transition: "all 0.15s ease", display: "flex", alignItems: "center" }}
+                      >
+                        <FileText size={16} />
+                      </button>
                       <button onClick={() => router.push(`/projects/${project.id}`)} style={{
-                          padding: "8px",
-                          background: "transparent",
-                          color: "#0052cc",
-                          border: "1.5px solid #0052cc",
-                          borderRadius: "6px",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center"
-                        }}
+                        padding: "8px",
+                        background: "transparent",
+                        color: "#0052cc",
+                        border: "1.5px solid #0052cc",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
+                      }}
                         aria-label="View Project"
                       >
                         <Eye size={18} />
@@ -409,7 +469,15 @@ export default function Dashboard({ user }: DashboardProps) {
 
       {/* Feature 2: Doctor Modal */}
       <ProjectHealthModal isOpen={healthModalOpen} onClose={() => setHealthModalOpen(false)} projectName={analyzingProjectName} data={healthData} loading={healthLoading} />
-      
+
+      {/* Feature 3: The Scribe Modal */}
+      <ReleaseNotesModal
+        isOpen={scribeModalOpen}
+        onClose={() => setScribeModalOpen(false)}
+        projectName={scribeProjectName}
+        content={scribeContent}
+        loading={scribeLoading}
+      />
     </div>
   );
 }
