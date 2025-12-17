@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   FolderKanban, Users, ClipboardList, BarChart3, Clock, Plus,
-  Sparkles, HeartPulse, Eye, FileText, TrendingUp, Activity
+  Sparkles, HeartPulse, Eye, FileText, TrendingUp, Activity,MessageSquare
 } from "lucide-react";
 
 import WorkspaceSidebar from "./WorkspaceSidebar";
@@ -18,12 +18,14 @@ import ProjectDeleteButton from "./ProjectDeleteButton";
 import ProjectHealthModal from "./ProjectHealthModal";
 import { writeReleaseNotes } from "@/api/ai";
 import ReleaseNotesModal from "./ReleaseNotesModal";
+import ProjectChatModal from "./ProjectChatModal"; 
 
 // Imports for AI & API
 import { useAuth } from "@/hooks/useAuth";
 import AiProjectModal from "./AiProjectModal";
 import { analyzeProjectHealth } from "@/api/ai";
 import { createTask } from "@/api/tasks";
+
 
 // Helper to fetch tasks for the doctor
 async function fetchProjectTasks(projectId: string, token: string) {
@@ -60,6 +62,9 @@ export default function Dashboard({ user }: DashboardProps) {
   const [scribeLoading, setScribeLoading] = useState(false);
   const [scribeContent, setScribeContent] = useState("");
   const [scribeProjectName, setScribeProjectName] = useState("");
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [chatProjectName, setChatProjectName] = useState("");
+  const [chatContextTasks, setChatContextTasks] = useState<any[]>([]);
 
   const activeWorkspace =
     workspaces.find((w: any) => w.workspaceId === activeWorkspaceId) ??
@@ -198,7 +203,7 @@ export default function Dashboard({ user }: DashboardProps) {
     }
   };
 
-  // Doctor Logic
+  // Doctor Logic / Health Check
   const handleCheckHealth = async (projectId: string, name: string) => {
     setAnalyzingProjectName(name);
     setHealthModalOpen(true);
@@ -219,7 +224,7 @@ export default function Dashboard({ user }: DashboardProps) {
       setHealthLoading(false);
     }
   };
-
+  // Scribe Logic
   const handleScribe = async (projectId: string, name: string) => {
     setScribeProjectName(name);
     setScribeModalOpen(true);
@@ -261,7 +266,34 @@ export default function Dashboard({ user }: DashboardProps) {
       setScribeLoading(false);
     }
   };
+// 👇 FEATURE 5: Handle Opening Chat
+  const handleOpenChat = async (projectId: string, name: string) => {
+    setChatProjectName(name);
+    setChatContextTasks([]); // Clear old context
+    
+    // We open the modal immediately so the user sees it loading (or waiting)
+    // You could also show a loader, but the modal handles its own "Welcome" state
+    
+    try {
+      const token = await getAccessTokenSilently();
+      const tasks = await fetchProjectTasks(projectId, token);
+      
+      // Sanitize like we did for Scribe (Optional but good practice)
+      const cleanTasks = tasks.map((t: any) => ({
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        description: t.description || "",
+        tag: (Array.isArray(t.tags) && t.tags.length > 0) ? t.tags[0] : "General"
+      }));
 
+      setChatContextTasks(cleanTasks);
+      setChatModalOpen(true);
+    } catch (error) {
+      console.error("Failed to load context for chat", error);
+      alert("Could not load project tasks. Chat unavailable.");
+    }
+  };
   const openAiPlannerForProject = (projectId: string) => {
     setSelectedAiProjectId(projectId);
     setShowAiModal(true);
@@ -583,7 +615,13 @@ export default function Dashboard({ user }: DashboardProps) {
                       >
                         <FileText size={18} />
                       </button>
-                      
+                      <button 
+                        onClick={() => handleOpenChat(project.id, project.name)} 
+                        title="The Brain: Chat with Project" 
+                        style={{ padding: "8px", background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", borderRadius: "6px", cursor: "pointer", transition: "all 0.15s ease", display: "flex", alignItems: "center" }}
+                      >
+                        <MessageSquare size={16} />
+                      </button>
                       <button 
                         onClick={() => router.push(`/projects/${project.id}`)} 
                         style={{
@@ -1095,6 +1133,12 @@ export default function Dashboard({ user }: DashboardProps) {
         projectName={scribeProjectName}
         content={scribeContent}
         loading={scribeLoading}
+      />
+      <ProjectChatModal 
+        isOpen={chatModalOpen} 
+        onClose={() => setChatModalOpen(false)} 
+        projectName={chatProjectName} 
+        contextTasks={chatContextTasks} 
       />
 
       <style>{`
