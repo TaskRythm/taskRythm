@@ -5,14 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import { refineTask } from "@/api/ai";
 import { useAuth } from "@/hooks/useAuth";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft, CheckCircle2, Clock, Calendar, Flag, Tag, Users, Plus, Trash2, AlertTriangle, Save, X } from "lucide-react";
 
 import {
   useWorkspaceStore,
   type WorkspaceRole,
 } from "@/store/workspaceStore";
 
-import { useWorkspaces } from "@/hooks/useWorkspaces"; // ✅ YOUR FIX (hydrate workspace store on refresh)
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { useProjects } from "@/hooks/useProjects";
 import { useTasks } from "@/hooks/useTasks";
 
@@ -40,7 +40,6 @@ function formatEstimateMinutes(minutes?: number | null): string {
   return `${mins}m`;
 }
 
-// Order of statuses in the Kanban board
 const STATUS_FLOW: TaskStatus[] = ["TODO", "IN_PROGRESS", "BLOCKED", "DONE"];
 
 const ISSUE_TYPE_LABELS: Record<TaskType, string> = {
@@ -52,11 +51,11 @@ const ISSUE_TYPE_LABELS: Record<TaskType, string> = {
 };
 
 const ISSUE_TYPE_COLORS: Record<TaskType, string> = {
-  TASK: "#42526e",
-  BUG: "#de350b",
-  FEATURE: "#0052cc",
-  IMPROVEMENT: "#5243aa",
-  SPIKE: "#ff991f",
+  TASK: "#667eea",
+  BUG: "#ef4444",
+  FEATURE: "#3b82f6",
+  IMPROVEMENT: "#8b5cf6",
+  SPIKE: "#f59e0b",
 };
 
 const PRIORITY_LABELS: Record<TaskPriority, string> = {
@@ -66,9 +65,16 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
 };
 
 const PRIORITY_COLORS: Record<TaskPriority, string> = {
-  LOW: "#006644",
-  MEDIUM: "#ff8b00",
-  HIGH: "#de350b",
+  LOW: "#10b981",
+  MEDIUM: "#f59e0b",
+  HIGH: "#ef4444",
+};
+
+const STATUS_COLORS: Record<TaskStatus, string> = {
+  TODO: "#94a3b8",
+  IN_PROGRESS: "#3b82f6",
+  BLOCKED: "#ef4444",
+  DONE: "#10b981",
 };
 
 export default function ProjectPage() {
@@ -76,7 +82,6 @@ export default function ProjectPage() {
   const router = useRouter();
   const projectId = params.projectId;
 
-  // ✅ YOUR FIX: make sure workspace store is hydrated even after refresh/deep-link
   useWorkspaces();
 
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
@@ -102,7 +107,6 @@ export default function ProjectPage() {
   const [newDesc, setNewDesc] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
-  // Modal state for editing a task
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
@@ -114,16 +118,12 @@ export default function ProjectPage() {
   const [editType, setEditType] = useState<TaskType>("TASK");
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Parent task state in modal
   const [editParentTaskId, setEditParentTaskId] = useState<string | null>(null);
 
-  // Subtasks (inside modal)
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
-  // Delete confirmation modal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Workspace membership info (for displaying role only)
   const currentWorkspaceMembership = useMemo(
     () => workspaces.find((w) => w.workspaceId === activeWorkspaceId) ?? null,
     [workspaces, activeWorkspaceId],
@@ -147,11 +147,9 @@ export default function ProjectPage() {
   useEffect(() => {
     if (!projectsLoading && !project) {
       console.warn("Project not found, redirecting to /");
-      // router.push("/");
     }
   }, [projectsLoading, project]);
 
-  // ✅ FRIEND FEATURE: AI refine task
   const [isRefining, setIsRefining] = useState(false);
   const { getAccessTokenSilently } = useAuth();
 
@@ -248,8 +246,8 @@ export default function ProjectPage() {
   };
 
   const completedTasks = tasks.filter((t) => t.status === "DONE").length;
+  const progressPercent = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
 
-  // Split into top-level tasks and children
   const topLevelTasks = tasks.filter((t) => !t.parentTaskId);
   const childrenByParent: Record<string, Task[]> = {};
 
@@ -262,7 +260,6 @@ export default function ProjectPage() {
     }
   });
 
-  // Group only top-level tasks by status for columns
   const tasksByStatus: Record<TaskStatus, Task[]> = {
     TODO: [],
     IN_PROGRESS: [],
@@ -275,14 +272,13 @@ export default function ProjectPage() {
     tasksByStatus[t.status].push(t);
   });
 
-  const columns: { key: TaskStatus; title: string; accent: string }[] = [
-    { key: "TODO", title: "To do", accent: "#dfe1e6" },
-    { key: "IN_PROGRESS", title: "In progress", accent: "#deebff" },
-    { key: "BLOCKED", title: "Blocked", accent: "#ffebe6" },
-    { key: "DONE", title: "Done", accent: "#e3fcef" },
+  const columns: { key: TaskStatus; title: string; accent: string; bgColor: string }[] = [
+    { key: "TODO", title: "To Do", accent: "#f1f5f9", bgColor: "#f8fafc" },
+    { key: "IN_PROGRESS", title: "In Progress", accent: "#dbeafe", bgColor: "#eff6ff" },
+    { key: "BLOCKED", title: "Blocked", accent: "#fee2e2", bgColor: "#fef2f2" },
+    { key: "DONE", title: "Done", accent: "#d1fae5", bgColor: "#f0fdf4" },
   ];
 
-  // Eligible parents
   const eligibleParents = useMemo(
     () =>
       selectedTask
@@ -296,7 +292,6 @@ export default function ProjectPage() {
     [tasks, selectedTask],
   );
 
-  // Open modal with a task
   const handleOpenTask = (task: Task) => {
     setSelectedTask(task);
     setEditTitle(task.title);
@@ -406,7 +401,6 @@ export default function ProjectPage() {
     }
   };
 
-  // Subtasks handlers
   const handleAddSubtask = async () => {
     if (!selectedTask) return;
     const title = newSubtaskTitle.trim();
@@ -469,31 +463,58 @@ export default function ProjectPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f4f5f7",
+        background: "linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%)",
         paddingBottom: "40px",
       }}
     >
-      {/* Top bar / breadcrumb */}
+      {/* Enhanced Top Bar */}
       <div
         style={{
-          background: "white",
-          borderBottom: "1px solid #e1e5e9",
-          padding: "16px 0",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          borderBottom: "none",
+          padding: "24px 0",
+          boxShadow: "0 4px 20px rgba(102, 126, 234, 0.25)",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <div className="container">
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+          opacity: 0.4
+        }} />
+        
+        <div className="container" style={{ position: "relative", zIndex: 1 }}>
           <button
             onClick={() => router.push("/")}
             style={{
               border: "none",
-              background: "transparent",
-              color: "#0052cc",
-              fontSize: "13px",
+              background: "rgba(255, 255, 255, 0.2)",
+              backdropFilter: "blur(10px)",
+              color: "white",
+              fontSize: "14px",
               cursor: "pointer",
-              marginBottom: "8px",
+              marginBottom: "16px",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(255, 255, 255, 0.3)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
             }}
           >
-            ← Back to dashboard
+            <ArrowLeft size={16} /> Back to dashboard
           </button>
           <div
             style={{
@@ -505,19 +526,21 @@ export default function ProjectPage() {
             <div>
               <h1
                 style={{
-                  fontSize: "26px",
-                  fontWeight: 700,
-                  color: "#172b4d",
-                  marginBottom: "4px",
+                  fontSize: "32px",
+                  fontWeight: 800,
+                  color: "white",
+                  marginBottom: "8px",
+                  letterSpacing: "-0.5px",
                 }}
               >
                 {project?.name || "Project"}
               </h1>
               <p
                 style={{
-                  fontSize: "13px",
-                  color: "#6b778c",
+                  fontSize: "14px",
+                  color: "rgba(255, 255, 255, 0.9)",
                   margin: 0,
+                  fontWeight: 500,
                 }}
               >
                 Workspace: <strong>{workspaceName}</strong>
@@ -538,55 +561,97 @@ export default function ProjectPage() {
 
             <div
               style={{
-                background: "#f4f5f7",
-                padding: "8px 12px",
-                borderRadius: "6px",
-                fontSize: "13px",
-                color: "#6b778c",
+                background: "rgba(255, 255, 255, 0.2)",
+                backdropFilter: "blur(10px)",
+                padding: "16px 20px",
+                borderRadius: "12px",
+                fontSize: "14px",
+                color: "white",
+                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
+                minWidth: "200px",
               }}
             >
-              Tasks: <strong>{tasks.length}</strong> · Completed:{" "}
-              <strong>{completedTasks}</strong>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                <CheckCircle2 size={18} />
+                <span style={{ fontWeight: 700 }}>Progress</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "8px" }}>
+                <span>Tasks: <strong>{tasks.length}</strong></span>
+                <span>Done: <strong>{completedTasks}</strong></span>
+              </div>
+              <div style={{ height: "8px", background: "rgba(255, 255, 255, 0.3)", borderRadius: "10px", overflow: "hidden" }}>
+                <div style={{ 
+                  height: "100%", 
+                  background: "white", 
+                  width: `${progressPercent}%`,
+                  borderRadius: "10px",
+                  transition: "width 0.5s ease",
+                  boxShadow: "0 0 8px rgba(255, 255, 255, 0.5)"
+                }} />
+              </div>
+              <div style={{ marginTop: "6px", fontSize: "16px", fontWeight: 800, textAlign: "center" }}>
+                {progressPercent}%
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="container" style={{ marginTop: "24px" }}>
+      <div className="container" style={{ marginTop: "32px" }}>
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "3fr 1fr",
-            gap: "24px",
+            gap: "28px",
             alignItems: "flex-start",
           }}
         >
-          {/* LEFT: Kanban board */}
+          {/* LEFT: Enhanced Kanban board */}
           <div>
-            <h2
-              style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                marginBottom: "12px",
-                color: "#172b4d",
-              }}
-            >
-              Tasks (Kanban)
-            </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+              <div style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "8px",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+              }}>
+                <Tag size={18} color="white" />
+              </div>
+              <h2
+                style={{
+                  fontSize: "22px",
+                  fontWeight: 800,
+                  margin: 0,
+                  color: "#1e293b",
+                  letterSpacing: "-0.3px",
+                }}
+              >
+                Tasks Kanban Board
+              </h2>
+            </div>
 
             {!canEditTasks && (
               <div
                 style={{
-                  marginBottom: "12px",
-                  padding: "8px 12px",
-                  borderRadius: "4px",
-                  border: "1px solid #e1e5e9",
-                  background: "#f4f5f7",
-                  fontSize: "12px",
-                  color: "#6b778c",
+                  marginBottom: "16px",
+                  padding: "12px 16px",
+                  borderRadius: "12px",
+                  border: "2px solid #e2e8f0",
+                  background: "#f8fafc",
+                  fontSize: "13px",
+                  color: "#64748b",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
                 }}
               >
+                <AlertTriangle size={16} color="#64748b" />
                 You have view-only access in this workspace. Task editing is disabled.
               </div>
             )}
@@ -594,9 +659,14 @@ export default function ProjectPage() {
             {tasksError && (
               <div
                 style={{
-                  marginBottom: "10px",
+                  marginBottom: "16px",
                   fontSize: "13px",
-                  color: "#de350b",
+                  color: "#ef4444",
+                  background: "#fef2f2",
+                  padding: "12px 16px",
+                  borderRadius: "12px",
+                  border: "1px solid #fecaca",
+                  fontWeight: 600,
                 }}
               >
                 {tasksError}
@@ -604,7 +674,26 @@ export default function ProjectPage() {
             )}
 
             {tasksLoading ? (
-              <div style={{ fontSize: "14px", color: "#6b778c" }}>
+              <div style={{ 
+                fontSize: "16px", 
+                color: "#64748b",
+                textAlign: "center",
+                padding: "60px 20px",
+                background: "white",
+                borderRadius: "16px",
+                border: "1px solid #e2e8f0",
+              }}>
+                <div
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    margin: "0 auto 16px",
+                    borderRadius: "50%",
+                    border: "4px solid #e2e8f0",
+                    borderTopColor: "#667eea",
+                    animation: "spin 1s linear infinite",
+                  }}
+                />
                 Loading tasks…
               </div>
             ) : (
@@ -612,7 +701,7 @@ export default function ProjectPage() {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-                  gap: "16px",
+                  gap: "20px",
                   alignItems: "flex-start",
                 }}
               >
@@ -620,11 +709,12 @@ export default function ProjectPage() {
                   <div
                     key={col.key}
                     style={{
-                      background: "#fdfdfd",
-                      borderRadius: "8px",
-                      border: "1px solid #e1e5e9",
-                      padding: "12px",
-                      minHeight: "120px",
+                      background: col.bgColor,
+                      borderRadius: "16px",
+                      border: `2px solid ${col.accent}`,
+                      padding: "16px",
+                      minHeight: "140px",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
                     }}
                   >
                     {/* Column header */}
@@ -633,26 +723,38 @@ export default function ProjectPage() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginBottom: "8px",
+                        marginBottom: "14px",
+                        paddingBottom: "12px",
+                        borderBottom: `2px solid ${col.accent}`,
                       }}
                     >
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div style={{
+                          width: "8px",
+                          height: "8px",
+                          borderRadius: "50%",
+                          background: STATUS_COLORS[col.key],
+                        }} />
+                        <span
+                          style={{
+                            fontSize: "14px",
+                            fontWeight: 800,
+                            color: "#1e293b",
+                            letterSpacing: "-0.2px",
+                          }}
+                        >
+                          {col.title}
+                        </span>
+                      </div>
                       <span
                         style={{
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          color: "#172b4d",
-                        }}
-                      >
-                        {col.title}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          padding: "2px 8px",
-                          borderRadius: "999px",
-                          background: col.accent,
-                          color: "#42526e",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          padding: "4px 10px",
+                          borderRadius: "20px",
+                          background: "white",
+                          color: STATUS_COLORS[col.key],
+                          boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
                         }}
                       >
                         {tasksByStatus[col.key].length}
@@ -663,15 +765,17 @@ export default function ProjectPage() {
                     {tasksByStatus[col.key].length === 0 ? (
                       <div
                         style={{
-                          fontSize: "12px",
-                          color: "#6b778c",
+                          fontSize: "13px",
+                          color: "#94a3b8",
                           fontStyle: "italic",
+                          textAlign: "center",
+                          padding: "20px 10px",
                         }}
                       >
-                        No tasks
+                        No tasks here
                       </div>
                     ) : (
-                      <div style={{ display: "grid", gap: "8px" }}>
+                      <div style={{ display: "grid", gap: "12px" }}>
                         {tasksByStatus[col.key].map((task) => {
                           const children = childrenByParent[task.id] ?? [];
 
@@ -680,27 +784,47 @@ export default function ProjectPage() {
                               key={task.id}
                               onClick={() => handleOpenTask(task)}
                               style={{
-                                padding: "8px 10px",
-                                borderRadius: "6px",
-                                border: "1px solid #e1e5e9",
+                                padding: "14px",
+                                borderRadius: "12px",
+                                border: "1px solid #e2e8f0",
                                 background: "white",
                                 display: "flex",
                                 flexDirection: "column",
-                                gap: "6px",
+                                gap: "10px",
                                 cursor: "pointer",
+                                transition: "all 0.2s ease",
+                                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                                e.currentTarget.style.boxShadow = "0 8px 16px rgba(0, 0, 0, 0.12)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "translateY(0)";
+                                e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.05)";
                               }}
                             >
                               <div
                                 style={{
-                                  fontSize: "13px",
-                                  fontWeight: 500,
-                                  color: "#172b4d",
+                                  fontSize: "14px",
+                                  fontWeight: 700,
+                                  color: "#1e293b",
+                                  lineHeight: "1.4",
                                 }}
                               >
                                 {task.title}
                               </div>
                               {task.description && (
-                                <div style={{ fontSize: "12px", color: "#6b778c" }}>
+                                <div style={{ 
+                                  fontSize: "12px", 
+                                  color: "#64748b",
+                                  lineHeight: "1.5",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
+                                }}>
                                   {task.description}
                                 </div>
                               )}
@@ -709,23 +833,24 @@ export default function ProjectPage() {
                                 style={{
                                   display: "flex",
                                   flexDirection: "column",
-                                  gap: "4px",
+                                  gap: "8px",
                                   marginTop: "4px",
                                 }}
                               >
-                                {/* Top row: type + estimate + priority */}
+                                {/* Badges row */}
                                 <div
                                   style={{
                                     display: "flex",
                                     justifyContent: "space-between",
                                     alignItems: "center",
                                     gap: "6px",
+                                    flexWrap: "wrap",
                                   }}
                                 >
                                   <div
                                     style={{
                                       display: "flex",
-                                      gap: "4px",
+                                      gap: "6px",
                                       alignItems: "center",
                                       flexWrap: "wrap",
                                     }}
@@ -734,14 +859,14 @@ export default function ProjectPage() {
                                       <span
                                         style={{
                                           fontSize: "10px",
-                                          fontWeight: 600,
-                                          padding: "2px 6px",
-                                          borderRadius: "999px",
-                                          background:
-                                            ISSUE_TYPE_COLORS[task.type as TaskType] + "1a",
+                                          fontWeight: 700,
+                                          padding: "4px 8px",
+                                          borderRadius: "6px",
+                                          background: ISSUE_TYPE_COLORS[task.type as TaskType] + "15",
                                           color: ISSUE_TYPE_COLORS[task.type as TaskType],
                                           textTransform: "uppercase",
-                                          letterSpacing: "0.04em",
+                                          letterSpacing: "0.5px",
+                                          border: `1px solid ${ISSUE_TYPE_COLORS[task.type as TaskType]}30`,
                                         }}
                                       >
                                         {ISSUE_TYPE_LABELS[task.type as TaskType]}
@@ -753,12 +878,18 @@ export default function ProjectPage() {
                                         <span
                                           style={{
                                             fontSize: "10px",
-                                            padding: "2px 6px",
-                                            borderRadius: "999px",
-                                            border: "1px solid #dfe1e6",
-                                            color: "#42526e",
+                                            fontWeight: 600,
+                                            padding: "4px 8px",
+                                            borderRadius: "6px",
+                                            border: "1px solid #e2e8f0",
+                                            color: "#64748b",
+                                            background: "white",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "4px",
                                           }}
                                         >
+                                          <Clock size={10} />
                                           {formatEstimateMinutes(task.estimateMinutes)}
                                         </span>
                                       )}
@@ -767,105 +898,135 @@ export default function ProjectPage() {
                                       <span
                                         style={{
                                           fontSize: "10px",
-                                          padding: "2px 6px",
-                                          borderRadius: "999px",
-                                          background:
-                                            PRIORITY_COLORS[task.priority as TaskPriority] + "1a",
+                                          fontWeight: 700,
+                                          padding: "4px 8px",
+                                          borderRadius: "6px",
+                                          background: PRIORITY_COLORS[task.priority as TaskPriority] + "15",
                                           color: PRIORITY_COLORS[task.priority as TaskPriority],
-                                          fontWeight: 600,
+                                          border: `1px solid ${PRIORITY_COLORS[task.priority as TaskPriority]}30`,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "4px",
                                         }}
                                       >
+                                        <Flag size={10} />
                                         {PRIORITY_LABELS[task.priority as TaskPriority]}
                                       </span>
                                     )}
                                   </div>
 
                                   {task.dueDate && (
-                                    <div style={{ fontSize: "10px", color: "#6b778c" }}>
-                                      Due {formatDate(task.dueDate)}
+                                    <div style={{ 
+                                      fontSize: "10px", 
+                                      color: "#64748b",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      fontWeight: 600,
+                                    }}>
+                                      <Calendar size={10} />
+                                      {formatDate(task.dueDate)}
                                     </div>
                                   )}
                                 </div>
 
-                                {/* Bottom row: status + arrows */}
+                                {/* Movement buttons */}
                                 <div
                                   style={{
                                     display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
+                                    justifyContent: "flex-end",
                                     gap: "6px",
                                   }}
                                 >
-                                  <div
-                                    style={{
-                                      fontSize: "10px",
-                                      textTransform: "uppercase",
-                                      letterSpacing: "0.04em",
-                                      color: "#6b778c",
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      moveTask(task.id, task.status, "left");
                                     }}
-                                  >
-                                    {task.status}
-                                  </div>
-
-                                  <div style={{ display: "flex", gap: "4px" }}>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        moveTask(task.id, task.status, "left");
-                                      }}
-                                      disabled={
+                                    disabled={
+                                      tasksSaving ||
+                                      !canEditTasks ||
+                                      STATUS_FLOW.indexOf(task.status) === 0
+                                    }
+                                    style={{
+                                      padding: "4px 10px",
+                                      fontSize: "12px",
+                                      borderRadius: "6px",
+                                      border: "1px solid #e2e8f0",
+                                      background: "white",
+                                      color: "#64748b",
+                                      cursor:
                                         tasksSaving ||
                                         !canEditTasks ||
                                         STATUS_FLOW.indexOf(task.status) === 0
+                                          ? "not-allowed"
+                                          : "pointer",
+                                      fontWeight: 600,
+                                      transition: "all 0.2s ease",
+                                      opacity: 
+                                        tasksSaving ||
+                                        !canEditTasks ||
+                                        STATUS_FLOW.indexOf(task.status) === 0 ? 0.4 : 1,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (!(tasksSaving || !canEditTasks || STATUS_FLOW.indexOf(task.status) === 0)) {
+                                        e.currentTarget.style.background = "#f8fafc";
+                                        e.currentTarget.style.borderColor = "#cbd5e1";
                                       }
-                                      style={{
-                                        padding: "2px 6px",
-                                        fontSize: "11px",
-                                        borderRadius: "4px",
-                                        border: "1px solid #dfe1e6",
-                                        background: "white",
-                                        color: "#6b778c",
-                                        cursor:
-                                          tasksSaving ||
-                                          !canEditTasks ||
-                                          STATUS_FLOW.indexOf(task.status) === 0
-                                            ? "not-allowed"
-                                            : "pointer",
-                                      }}
-                                    >
-                                      ←
-                                    </button>
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = "white";
+                                      e.currentTarget.style.borderColor = "#e2e8f0";
+                                    }}
+                                  >
+                                    ←
+                                  </button>
 
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        moveTask(task.id, task.status, "right");
-                                      }}
-                                      disabled={
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      moveTask(task.id, task.status, "right");
+                                    }}
+                                    disabled={
+                                      tasksSaving ||
+                                      !canEditTasks ||
+                                      STATUS_FLOW.indexOf(task.status) === STATUS_FLOW.length - 1
+                                    }
+                                    style={{
+                                      padding: "4px 10px",
+                                      fontSize: "12px",
+                                      borderRadius: "6px",
+                                      border: "1px solid #e2e8f0",
+                                      background: "white",
+                                      color: "#64748b",
+                                      cursor:
                                         tasksSaving ||
                                         !canEditTasks ||
                                         STATUS_FLOW.indexOf(task.status) === STATUS_FLOW.length - 1
+                                          ? "not-allowed"
+                                          : "pointer",
+                                      fontWeight: 600,
+                                      transition: "all 0.2s ease",
+                                      opacity:
+                                        tasksSaving ||
+                                        !canEditTasks ||
+                                        STATUS_FLOW.indexOf(task.status) === STATUS_FLOW.length - 1 ? 0.4 : 1,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (!(tasksSaving || !canEditTasks || STATUS_FLOW.indexOf(task.status) === STATUS_FLOW.length - 1)) {
+                                        e.currentTarget.style.background = "#f8fafc";
+                                        e.currentTarget.style.borderColor = "#cbd5e1";
                                       }
-                                      style={{
-                                        padding: "2px 6px",
-                                        fontSize: "11px",
-                                        borderRadius: "4px",
-                                        border: "1px solid #dfe1e6",
-                                        background: "white",
-                                        color: "#6b778c",
-                                        cursor:
-                                          tasksSaving ||
-                                          !canEditTasks ||
-                                          STATUS_FLOW.indexOf(task.status) === STATUS_FLOW.length - 1
-                                            ? "not-allowed"
-                                            : "pointer",
-                                      }}
-                                    >
-                                      →
-                                    </button>
-                                  </div>
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = "white";
+                                      e.currentTarget.style.borderColor = "#e2e8f0";
+                                    }}
+                                  >
+                                    →
+                                  </button>
                                 </div>
                               </div>
 
@@ -873,16 +1034,24 @@ export default function ProjectPage() {
                               {children.length > 0 && (
                                 <div
                                   style={{
-                                    marginTop: "6px",
-                                    paddingTop: "6px",
-                                    borderTop: "1px solid #ebecf0",
+                                    marginTop: "8px",
+                                    paddingTop: "12px",
+                                    borderTop: "2px solid #f1f5f9",
                                     display: "flex",
                                     flexDirection: "column",
-                                    gap: "4px",
+                                    gap: "6px",
                                   }}
                                 >
-                                  <div style={{ fontSize: "11px", fontWeight: 500, color: "#6b778c" }}>
-                                    Child tasks ({children.filter((c) => c.status === "DONE").length}/{children.length})
+                                  <div style={{ 
+                                    fontSize: "11px", 
+                                    fontWeight: 700, 
+                                    color: "#64748b",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                  }}>
+                                    <Users size={12} />
+                                    Child Tasks ({children.filter((c) => c.status === "DONE").length}/{children.length})
                                   </div>
 
                                   {children.map((child) => (
@@ -895,37 +1064,42 @@ export default function ProjectPage() {
                                       style={{
                                         display: "flex",
                                         alignItems: "center",
-                                        gap: "6px",
+                                        gap: "8px",
                                         fontSize: "11px",
-                                        padding: "4px 6px",
-                                        borderRadius: "4px",
-                                        background: "#f4f5f7",
+                                        padding: "6px 8px",
+                                        borderRadius: "8px",
+                                        background: "#f8fafc",
                                         cursor: "pointer",
+                                        border: "1px solid #e2e8f0",
+                                        transition: "all 0.15s ease",
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = "white";
+                                        e.currentTarget.style.borderColor = "#cbd5e1";
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = "#f8fafc";
+                                        e.currentTarget.style.borderColor = "#e2e8f0";
                                       }}
                                     >
                                       <span
                                         style={{
-                                          width: "6px",
-                                          height: "6px",
-                                          borderRadius: "999px",
+                                          width: "8px",
+                                          height: "8px",
+                                          borderRadius: "50%",
                                           flexShrink: 0,
-                                          background:
-                                            child.status === "DONE"
-                                              ? "#36b37e"
-                                              : child.status === "IN_PROGRESS"
-                                              ? "#0052cc"
-                                              : child.status === "BLOCKED"
-                                              ? "#de350b"
-                                              : "#6b778c",
+                                          background: STATUS_COLORS[child.status],
+                                          boxShadow: `0 0 0 2px ${STATUS_COLORS[child.status]}20`,
                                         }}
                                       />
                                       <span
                                         style={{
                                           flex: 1,
-                                          color: "#172b4d",
+                                          color: "#1e293b",
                                           overflow: "hidden",
                                           textOverflow: "ellipsis",
                                           whiteSpace: "nowrap",
+                                          fontWeight: 600,
                                         }}
                                       >
                                         {child.title}
@@ -934,10 +1108,11 @@ export default function ProjectPage() {
                                       <span
                                         style={{
                                           textTransform: "uppercase",
-                                          letterSpacing: "0.04em",
+                                          letterSpacing: "0.5px",
                                           fontSize: "9px",
-                                          color: "#6b778c",
+                                          color: "#94a3b8",
                                           flexShrink: 0,
+                                          fontWeight: 700,
                                         }}
                                       >
                                         {child.status.replace("_", " ")}
@@ -956,333 +1131,621 @@ export default function ProjectPage() {
               </div>
             )}
 
-            {/* New task form */}
+            {/* Enhanced New task form */}
             {canEditTasks ? (
               <div
                 style={{
-                  marginTop: "20px",
+                  marginTop: "28px",
                   background: "white",
-                  borderRadius: "8px",
-                  border: "1px solid #e1e5e9",
-                  padding: "16px",
+                  borderRadius: "16px",
+                  border: "2px solid #e2e8f0",
+                  padding: "24px",
+                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.06)",
                 }}
               >
-                <h3
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: "#172b4d",
-                    marginBottom: "10px",
-                  }}
-                >
-                  Add new task
-                </h3>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+                  <div style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "8px",
+                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+                  }}>
+                    <Plus size={18} color="white" />
+                  </div>
+                  <h3
+                    style={{
+                      fontSize: "16px",
+                      fontWeight: 800,
+                      color: "#1e293b",
+                      margin: 0,
+                      letterSpacing: "-0.2px",
+                    }}
+                  >
+                    Add New Task
+                  </h3>
+                </div>
 
                 {(localError || tasksError) && (
-                  <div style={{ fontSize: "13px", color: "#de350b", marginBottom: "8px" }}>
+                  <div style={{ 
+                    fontSize: "13px", 
+                    color: "#ef4444", 
+                    marginBottom: "16px",
+                    background: "#fef2f2",
+                    padding: "12px 16px",
+                    borderRadius: "10px",
+                    border: "1px solid #fecaca",
+                    fontWeight: 600,
+                  }}>
                     {localError || tasksError}
                   </div>
                 )}
 
-                <form onSubmit={handleCreateTask} style={{ display: "grid", gap: "8px" }}>
+                <div style={{ display: "grid", gap: "12px" }}>
                   <input
                     type="text"
                     placeholder="Task title"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleCreateTask(e);
+                      }
+                    }}
                     style={{
-                      padding: "8px 10px",
-                      borderRadius: "4px",
-                      border: "1px solid #dfe1e6",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      border: "2px solid #e2e8f0",
                       fontSize: "14px",
+                      fontWeight: 600,
+                      outline: "none",
+                      transition: "all 0.2s ease",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#10b981";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                      e.currentTarget.style.boxShadow = "none";
                     }}
                   />
                   <textarea
                     placeholder="Description (optional)"
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
-                    rows={2}
+                    rows={3}
                     style={{
-                      padding: "8px 10px",
-                      borderRadius: "4px",
-                      border: "1px solid #dfe1e6",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      border: "2px solid #e2e8f0",
                       fontSize: "14px",
+                      fontWeight: 500,
                       resize: "vertical",
+                      outline: "none",
+                      transition: "all 0.2s ease",
+                      fontFamily: "inherit",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#10b981";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                      e.currentTarget.style.boxShadow = "none";
                     }}
                   />
                   <div style={{ display: "flex", justifyContent: "flex-end" }}>
                     <button
-                      type="submit"
+                      type="button"
+                      onClick={handleCreateTask}
                       disabled={tasksSaving || !newTitle.trim()}
                       style={{
-                        padding: "8px 14px",
+                        padding: "12px 24px",
                         fontSize: "14px",
-                        borderRadius: "4px",
+                        fontWeight: 700,
+                        borderRadius: "10px",
                         border: "none",
-                        background: tasksSaving ? "#c1c7d0" : "#0052cc",
+                        background: tasksSaving || !newTitle.trim() 
+                          ? "#cbd5e1" 
+                          : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                         color: "white",
-                        cursor: tasksSaving ? "default" : "pointer",
+                        cursor: tasksSaving || !newTitle.trim() ? "not-allowed" : "pointer",
+                        boxShadow: tasksSaving || !newTitle.trim()
+                          ? "none"
+                          : "0 4px 12px rgba(16, 185, 129, 0.4)",
+                        transition: "all 0.2s ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!tasksSaving && newTitle.trim()) {
+                          e.currentTarget.style.transform = "translateY(-2px)";
+                          e.currentTarget.style.boxShadow = "0 6px 16px rgba(16, 185, 129, 0.5)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = tasksSaving || !newTitle.trim()
+                          ? "none"
+                          : "0 4px 12px rgba(16, 185, 129, 0.4)";
                       }}
                     >
-                      {tasksSaving ? "Adding…" : "Add task"}
+                      {tasksSaving ? (
+                        <>
+                          <div
+                            style={{
+                              width: "14px",
+                              height: "14px",
+                              border: "2px solid rgba(255, 255, 255, 0.3)",
+                              borderTopColor: "white",
+                              borderRadius: "50%",
+                              animation: "spin 0.8s linear infinite",
+                            }}
+                          />
+                          Adding…
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={16} />
+                          Add Task
+                        </>
+                      )}
                     </button>
                   </div>
-                </form>
+                </div>
               </div>
             ) : (
               <div
                 style={{
-                  marginTop: "20px",
-                  padding: "12px 16px",
-                  borderRadius: "8px",
-                  border: "1px solid #e1e5e9",
-                  background: "#f4f5f7",
-                  fontSize: "13px",
-                  color: "#6b778c",
+                  marginTop: "28px",
+                  padding: "20px 24px",
+                  borderRadius: "16px",
+                  border: "2px dashed #cbd5e1",
+                  background: "#f8fafc",
+                  fontSize: "14px",
+                  color: "#64748b",
+                  textAlign: "center",
+                  fontWeight: 600,
                 }}
               >
-                You can view tasks in this project, but you don&apos;t have permission to create or edit them in this workspace.
+                You can view tasks in this project, but you don't have permission to create or edit them in this workspace.
               </div>
             )}
           </div>
 
-          {/* RIGHT: Project Stats */}
+          {/* RIGHT: Enhanced Project Stats */}
           <div>
             <div
               style={{
                 background: "white",
-                border: "1px solid #dfe1e6",
-                borderRadius: "8px",
-                padding: "20px",
+                border: "1px solid #e2e8f0",
+                borderRadius: "16px",
+                padding: "24px",
+                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.06)",
               }}
             >
-              <h3
-                style={{
-                  fontSize: "16px",
-                  fontWeight: 600,
-                  marginBottom: "12px",
-                  color: "#172b4d",
-                }}
-              >
-                Project Stats
-              </h3>
-              <div style={{ fontSize: "13px", color: "#6b778c" }}>
-                <div>Total tasks: {tasks.length}</div>
-                <div>Completed: {completedTasks}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+                <div style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+                }}>
+                  <CheckCircle2 size={18} color="white" />
+                </div>
+                <h3
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    margin: 0,
+                    color: "#1e293b",
+                    letterSpacing: "-0.3px",
+                  }}
+                >
+                  Project Stats
+                </h3>
+              </div>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{
+                  padding: "14px 16px",
+                  background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                  borderRadius: "12px",
+                  border: "1px solid #e2e8f0",
+                }}>
+                  <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "4px", fontWeight: 600 }}>Total Tasks</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, color: "#1e293b" }}>{tasks.length}</div>
+                </div>
+                
+                <div style={{
+                  padding: "14px 16px",
+                  background: "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)",
+                  borderRadius: "12px",
+                  border: "1px solid #6ee7b7",
+                }}>
+                  <div style={{ fontSize: "12px", color: "#065f46", marginBottom: "4px", fontWeight: 600 }}>Completed</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, color: "#047857" }}>{completedTasks}</div>
+                </div>
+
+                <div style={{
+                  padding: "14px 16px",
+                  background: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+                  borderRadius: "12px",
+                  border: "1px solid #93c5fd",
+                }}>
+                  <div style={{ fontSize: "12px", color: "#1e40af", marginBottom: "4px", fontWeight: 600 }}>Progress</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, color: "#1d4ed8" }}>{progressPercent}%</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Task Details Modal */}
+      {/* Enhanced Task Details Modal */}
       {selectedTask && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.5)",
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             zIndex: 1000,
+            animation: "fadeIn 0.2s ease",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !tasksSaving) {
+              handleCloseTaskModal();
+            }
           }}
         >
           <div
             style={{
               background: "white",
-              padding: "24px",
-              borderRadius: "10px",
+              padding: "32px",
+              borderRadius: "20px",
               width: "100%",
-              maxWidth: "520px",
-              boxShadow: "0 12px 32px rgba(9,30,66,0.35)",
+              maxWidth: "600px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.4)",
+              animation: "slideUp 0.3s ease",
             }}
           >
-            <h2
-              style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                marginBottom: "8px",
-                color: "#172b4d",
-              }}
-            >
-              Task details
-            </h2>
-            <p
-              style={{
-                fontSize: "12px",
-                color: "#6b778c",
-                marginTop: 0,
+            <div style={{ marginBottom: "24px" }}>
+              <div style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 marginBottom: "16px",
-              }}
-            >
-              Edit title, description, status, estimate, priority, type and subtasks.
-            </p>
+                boxShadow: "0 4px 16px rgba(102, 126, 234, 0.3)",
+              }}>
+                <Tag size={24} color="white" />
+              </div>
+              <h2
+                style={{
+                  fontSize: "24px",
+                  fontWeight: 800,
+                  marginBottom: "8px",
+                  color: "#1e293b",
+                  letterSpacing: "-0.4px",
+                }}
+              >
+                Task Details
+              </h2>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  margin: 0,
+                }}
+              >
+                Edit title, description, status, estimate, priority, type and subtasks.
+              </p>
+            </div>
 
             {editError && (
-              <div style={{ marginBottom: "10px", fontSize: "13px", color: "#de350b" }}>
+              <div style={{ 
+                marginBottom: "16px", 
+                fontSize: "13px", 
+                color: "#ef4444",
+                background: "#fef2f2",
+                padding: "12px 16px",
+                borderRadius: "10px",
+                border: "1px solid #fecaca",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}>
+                <AlertTriangle size={16} />
                 {editError}
               </div>
             )}
 
-            <form onSubmit={handleSaveTask} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {/* Title header + AI button */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
-                  Title
-                </span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {/* Title with AI button */}
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <label style={{ fontSize: "13px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Title *
+                  </label>
 
-                <button
-                  type="button"
-                  onClick={handleRefineTask}
-                  disabled={isRefining || isReadOnly || !editTitle.trim()}
+                  <button
+                    type="button"
+                    onClick={handleRefineTask}
+                    disabled={isRefining || isReadOnly || !editTitle.trim()}
+                    style={{
+                      background: isRefining || isReadOnly || !editTitle.trim() 
+                        ? "#f1f5f9" 
+                        : "linear-gradient(135deg, #a855f7 0%, #9333ea 100%)",
+                      border: "none",
+                      cursor: isRefining || isReadOnly || !editTitle.trim() ? "not-allowed" : "pointer",
+                      color: isRefining || isReadOnly || !editTitle.trim() ? "#94a3b8" : "white",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      boxShadow: isRefining || isReadOnly || !editTitle.trim() 
+                        ? "none" 
+                        : "0 2px 8px rgba(168, 85, 247, 0.3)",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!(isRefining || isReadOnly || !editTitle.trim())) {
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(168, 85, 247, 0.4)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = isRefining || isReadOnly || !editTitle.trim() 
+                        ? "none" 
+                        : "0 2px 8px rgba(168, 85, 247, 0.3)";
+                    }}
+                  >
+                    {isRefining ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    {isRefining ? "Refining..." : "Refine with AI"}
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  disabled={isReadOnly || tasksSaving}
                   style={{
-                    background: "none",
-                    border: "none",
-                    cursor: isRefining || isReadOnly || !editTitle.trim() ? "not-allowed" : "pointer",
-                    color: "#9333ea",
-                    fontSize: "12px",
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    border: "2px solid #e2e8f0",
+                    fontSize: "14px",
                     fontWeight: 600,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    opacity: isRefining || isReadOnly || !editTitle.trim() ? 0.6 : 1,
+                    outline: "none",
+                    transition: "all 0.2s ease",
+                    opacity: isReadOnly ? 0.6 : 1,
+                    cursor: isReadOnly ? "not-allowed" : "auto",
                   }}
-                >
-                  {isRefining ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                  {isRefining ? "Refining..." : "Refine with AI"}
-                </button>
+                  onFocus={(e) => {
+                    if (!isReadOnly) {
+                      e.currentTarget.style.borderColor = "#667eea";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                />
               </div>
 
-              <input
-                type="text"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                disabled={isReadOnly || tasksSaving}
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: "4px",
-                  border: "1px solid #dfe1e6",
-                  fontSize: "14px",
-                  width: "100%",
-                  opacity: isReadOnly ? 0.6 : 1,
-                  cursor: isReadOnly ? "not-allowed" : "auto",
-                }}
-              />
-
-              <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
-                Description
+              {/* Description */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Description
+                </label>
                 <textarea
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
                   disabled={isReadOnly || tasksSaving}
-                  rows={3}
+                  rows={4}
                   style={{
-                    marginTop: "4px",
-                    padding: "8px 10px",
-                    borderRadius: "4px",
-                    border: "1px solid #dfe1e6",
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    border: "2px solid #e2e8f0",
                     fontSize: "14px",
+                    fontWeight: 500,
                     resize: "vertical",
+                    outline: "none",
+                    transition: "all 0.2s ease",
+                    fontFamily: "inherit",
                     opacity: isReadOnly ? 0.6 : 1,
                     cursor: isReadOnly ? "not-allowed" : "auto",
                   }}
+                  onFocus={(e) => {
+                    if (!isReadOnly) {
+                      e.currentTarget.style.borderColor = "#667eea";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
                 />
-              </label>
-
-              {/* (rest of modal stays same as your friend's version) */}
-              {/* ... kept exactly as before ... */}
+              </div>
 
               {/* Status + Priority */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
-                  Status
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Status
+                  </label>
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value as TaskStatus)}
                     disabled={isReadOnly || tasksSaving}
                     style={{
-                      marginTop: "4px",
-                      padding: "8px 10px",
-                      borderRadius: "4px",
-                      border: "1px solid #dfe1e6",
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      border: "2px solid #e2e8f0",
                       fontSize: "14px",
+                      fontWeight: 600,
                       background: "white",
+                      outline: "none",
+                      transition: "all 0.2s ease",
                       opacity: isReadOnly ? 0.6 : 1,
-                      cursor: isReadOnly ? "not-allowed" : "auto",
+                      cursor: isReadOnly ? "not-allowed" : "pointer",
+                    }}
+                    onFocus={(e) => {
+                      if (!isReadOnly) {
+                        e.currentTarget.style.borderColor = "#667eea";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                      }
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                      e.currentTarget.style.boxShadow = "none";
                     }}
                   >
                     {STATUS_FLOW.map((s) => (
                       <option key={s} value={s}>
-                        {s}
+                        {s.replace("_", " ")}
                       </option>
                     ))}
                   </select>
-                </label>
+                </div>
 
-                <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
-                  Priority
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Priority
+                  </label>
                   <select
                     value={editPriority}
                     onChange={(e) => setEditPriority(e.target.value as TaskPriority)}
                     disabled={isReadOnly || tasksSaving}
                     style={{
-                      marginTop: "4px",
-                      padding: "8px 10px",
-                      borderRadius: "4px",
-                      border: "1px solid #dfe1e6",
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      border: "2px solid #e2e8f0",
                       fontSize: "14px",
+                      fontWeight: 600,
                       background: "white",
+                      outline: "none",
+                      transition: "all 0.2s ease",
                       opacity: isReadOnly ? 0.6 : 1,
-                      cursor: isReadOnly ? "not-allowed" : "auto",
+                      cursor: isReadOnly ? "not-allowed" : "pointer",
+                    }}
+                    onFocus={(e) => {
+                      if (!isReadOnly) {
+                        e.currentTarget.style.borderColor = "#667eea";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                      }
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                      e.currentTarget.style.boxShadow = "none";
                     }}
                   >
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
                     <option value="HIGH">High</option>
                   </select>
-                </label>
+                </div>
               </div>
 
-              {/* Due date + estimate */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
-                  Due date
+              {/* Due date + Estimate */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Due Date
+                  </label>
                   <input
                     type="date"
                     value={editDueDate}
                     onChange={(e) => setEditDueDate(e.target.value)}
                     disabled={isReadOnly || tasksSaving}
                     style={{
-                      marginTop: "4px",
-                      padding: "8px 10px",
-                      borderRadius: "4px",
-                      border: "1px solid #dfe1e6",
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      border: "2px solid #e2e8f0",
                       fontSize: "14px",
+                      fontWeight: 600,
+                      outline: "none",
+                      transition: "all 0.2s ease",
                       opacity: isReadOnly ? 0.6 : 1,
                       cursor: isReadOnly ? "not-allowed" : "auto",
                     }}
+                    onFocus={(e) => {
+                      if (!isReadOnly) {
+                        e.currentTarget.style.borderColor = "#667eea";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                      }
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
-                </label>
+                </div>
 
-                <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
-                  Estimate (time)
-                  <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Estimate (Time)
+                  </label>
+                  <div style={{ display: "flex", gap: "8px" }}>
                     <input
                       type="number"
                       min={0}
                       value={editHours}
                       onChange={(e) => setEditHours(e.target.value)}
                       disabled={isReadOnly || tasksSaving}
-                      placeholder="h"
+                      placeholder="Hours"
                       style={{
                         flex: 1,
-                        padding: "8px 10px",
-                        borderRadius: "4px",
-                        border: "1px solid #dfe1e6",
+                        padding: "12px 14px",
+                        borderRadius: "10px",
+                        border: "2px solid #e2e8f0",
                         fontSize: "14px",
+                        fontWeight: 600,
+                        outline: "none",
+                        transition: "all 0.2s ease",
                         opacity: isReadOnly ? 0.6 : 1,
                         cursor: isReadOnly ? "not-allowed" : "auto",
+                      }}
+                      onFocus={(e) => {
+                        if (!isReadOnly) {
+                          e.currentTarget.style.borderColor = "#667eea";
+                          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                        }
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#e2e8f0";
+                        e.currentTarget.style.boxShadow = "none";
                       }}
                     />
                     <input
@@ -1292,37 +1755,65 @@ export default function ProjectPage() {
                       value={editMinutes}
                       onChange={(e) => setEditMinutes(e.target.value)}
                       disabled={isReadOnly || tasksSaving}
-                      placeholder="m"
+                      placeholder="Mins"
                       style={{
                         flex: 1,
-                        padding: "8px 10px",
-                        borderRadius: "4px",
-                        border: "1px solid #dfe1e6",
+                        padding: "12px 14px",
+                        borderRadius: "10px",
+                        border: "2px solid #e2e8f0",
                         fontSize: "14px",
+                        fontWeight: 600,
+                        outline: "none",
+                        transition: "all 0.2s ease",
                         opacity: isReadOnly ? 0.6 : 1,
                         cursor: isReadOnly ? "not-allowed" : "auto",
                       }}
+                      onFocus={(e) => {
+                        if (!isReadOnly) {
+                          e.currentTarget.style.borderColor = "#667eea";
+                          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                        }
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#e2e8f0";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
                     />
                   </div>
-                </label>
+                </div>
               </div>
 
               {/* Issue type */}
-              <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
-                Issue type
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Issue Type
+                </label>
                 <select
                   value={editType}
                   onChange={(e) => setEditType(e.target.value as TaskType)}
                   disabled={isReadOnly || tasksSaving}
                   style={{
-                    marginTop: "4px",
-                    padding: "8px 10px",
-                    borderRadius: "4px",
-                    border: "1px solid #dfe1e6",
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    border: "2px solid #e2e8f0",
                     fontSize: "14px",
+                    fontWeight: 600,
                     background: "white",
+                    outline: "none",
+                    transition: "all 0.2s ease",
                     opacity: isReadOnly ? 0.6 : 1,
-                    cursor: isReadOnly ? "not-allowed" : "auto",
+                    cursor: isReadOnly ? "not-allowed" : "pointer",
+                  }}
+                  onFocus={(e) => {
+                    if (!isReadOnly) {
+                      e.currentTarget.style.borderColor = "#667eea";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                 >
                   <option value="TASK">Task</option>
@@ -1331,24 +1822,39 @@ export default function ProjectPage() {
                   <option value="IMPROVEMENT">Improvement</option>
                   <option value="SPIKE">Spike</option>
                 </select>
-              </label>
+              </div>
 
-              {/* Parent task selector */}
-              <label style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c" }}>
-                Parent task
+              {/* Parent task */}
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Parent Task
+                </label>
                 <select
                   value={editParentTaskId || ""}
                   onChange={(e) => setEditParentTaskId(e.target.value || null)}
                   disabled={selectedTaskHasChildren || isReadOnly || tasksSaving}
                   style={{
-                    marginTop: "4px",
-                    padding: "8px 10px",
-                    borderRadius: "4px",
-                    border: "1px solid #dfe1e6",
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    border: "2px solid #e2e8f0",
                     fontSize: "14px",
-                    background: selectedTaskHasChildren || isReadOnly ? "#f4f5f7" : "white",
+                    fontWeight: 600,
+                    background: selectedTaskHasChildren || isReadOnly ? "#f8fafc" : "white",
+                    outline: "none",
+                    transition: "all 0.2s ease",
                     opacity: selectedTaskHasChildren || isReadOnly ? 0.6 : 1,
-                    cursor: selectedTaskHasChildren || isReadOnly ? "not-allowed" : "auto",
+                    cursor: selectedTaskHasChildren || isReadOnly ? "not-allowed" : "pointer",
+                  }}
+                  onFocus={(e) => {
+                    if (!(selectedTaskHasChildren || isReadOnly)) {
+                      e.currentTarget.style.borderColor = "#667eea";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                 >
                   <option value="">No parent (top-level)</option>
@@ -1359,39 +1865,54 @@ export default function ProjectPage() {
                   ))}
                 </select>
                 {selectedTaskHasChildren && (
-                  <div style={{ marginTop: "4px", fontSize: "11px", color: "#6b778c" }}>
+                  <div style={{ marginTop: "6px", fontSize: "12px", color: "#64748b", fontWeight: 500 }}>
                     This task already has child tasks and cannot be converted into a child task.
                   </div>
                 )}
-              </label>
+              </div>
 
               {/* Subtasks */}
-              <div style={{ marginTop: "6px", paddingTop: "10px", borderTop: "1px solid #ebecf0" }}>
-                <div style={{ fontSize: "12px", fontWeight: 500, color: "#6b778c", marginBottom: "6px" }}>
+              <div style={{ paddingTop: "16px", borderTop: "2px solid #f1f5f9" }}>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   Subtasks
                 </div>
 
                 {(selectedTask.subtasks ?? []).length === 0 ? (
-                  <div style={{ fontSize: "12px", color: "#6b778c", fontStyle: "italic", marginBottom: "8px" }}>
+                  <div style={{ fontSize: "13px", color: "#94a3b8", fontStyle: "italic", marginBottom: "12px", textAlign: "center", padding: "16px" }}>
                     No subtasks yet.
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "8px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
                     {(selectedTask.subtasks ?? []).map((sub) => (
-                      <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px" }}>
+                      <div key={sub.id} style={{ 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "12px", 
+                        fontSize: "14px",
+                        padding: "10px 12px",
+                        background: "#f8fafc",
+                        borderRadius: "10px",
+                        border: "1px solid #e2e8f0",
+                      }}>
                         <input
                           type="checkbox"
                           checked={sub.isCompleted}
                           disabled={isReadOnly || tasksSaving}
                           onChange={() => !isReadOnly && handleToggleSubtask(sub.id, sub.isCompleted)}
-                          style={{ cursor: isReadOnly ? "not-allowed" : "pointer", opacity: isReadOnly ? 0.6 : 1 }}
+                          style={{ 
+                            cursor: isReadOnly ? "not-allowed" : "pointer", 
+                            opacity: isReadOnly ? 0.6 : 1,
+                            width: "18px",
+                            height: "18px",
+                          }}
                         />
                         <span
                           style={{
                             flex: 1,
                             textDecoration: sub.isCompleted ? "line-through" : "none",
-                            color: sub.isCompleted ? "#6b778c" : "#172b4d",
+                            color: sub.isCompleted ? "#94a3b8" : "#1e293b",
                             opacity: isReadOnly ? 0.6 : 1,
+                            fontWeight: 600,
                           }}
                         >
                           {sub.title}
@@ -1403,34 +1924,65 @@ export default function ProjectPage() {
                           style={{
                             border: "none",
                             background: "transparent",
-                            color: "#de350b",
-                            fontSize: "11px",
+                            color: "#ef4444",
+                            fontSize: "12px",
                             cursor: isReadOnly || tasksSaving ? "not-allowed" : "pointer",
                             opacity: isReadOnly ? 0.6 : 1,
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            fontWeight: 600,
+                            transition: "all 0.2s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isReadOnly && !tasksSaving) {
+                              e.currentTarget.style.background = "#fef2f2";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "transparent";
                           }}
                         >
-                          Delete
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
 
-                <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
+                <div style={{ display: "flex", gap: "8px" }}>
                   <input
                     type="text"
                     placeholder="Add subtask"
                     value={newSubtaskTitle}
                     onChange={(e) => setNewSubtaskTitle(e.target.value)}
                     disabled={isReadOnly || tasksSaving}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddSubtask();
+                      }
+                    }}
                     style={{
                       flex: 1,
-                      padding: "6px 8px",
-                      borderRadius: "4px",
-                      border: "1px solid #dfe1e6",
-                      fontSize: "12px",
+                      padding: "10px 12px",
+                      borderRadius: "10px",
+                      border: "2px solid #e2e8f0",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      outline: "none",
+                      transition: "all 0.2s ease",
                       opacity: isReadOnly ? 0.6 : 1,
                       cursor: isReadOnly ? "not-allowed" : "auto",
+                    }}
+                    onFocus={(e) => {
+                      if (!isReadOnly) {
+                        e.currentTarget.style.borderColor = "#667eea";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(102, 126, 234, 0.1)";
+                      }
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                      e.currentTarget.style.boxShadow = "none";
                     }}
                   />
                   <button
@@ -1438,126 +1990,295 @@ export default function ProjectPage() {
                     onClick={handleAddSubtask}
                     disabled={isReadOnly || tasksSaving || !newSubtaskTitle.trim()}
                     style={{
-                      padding: "6px 10px",
-                      fontSize: "12px",
-                      borderRadius: "4px",
+                      padding: "10px 16px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      borderRadius: "10px",
                       border: "none",
-                      background: isReadOnly || tasksSaving || !newSubtaskTitle.trim() ? "#c1c7d0" : "#0052cc",
+                      background: isReadOnly || tasksSaving || !newSubtaskTitle.trim() 
+                        ? "#cbd5e1" 
+                        : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                       color: "white",
-                      cursor: isReadOnly || tasksSaving || !newSubtaskTitle.trim() ? "default" : "pointer",
+                      cursor: isReadOnly || tasksSaving || !newSubtaskTitle.trim() ? "not-allowed" : "pointer",
+                      boxShadow: isReadOnly || tasksSaving || !newSubtaskTitle.trim()
+                        ? "none"
+                        : "0 2px 8px rgba(102, 126, 234, 0.3)",
+                      transition: "all 0.2s ease",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
                   >
+                    <Plus size={14} />
                     Add
                   </button>
                 </div>
               </div>
 
               {/* Footer buttons */}
-              <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center" }}>
+              <div style={{ marginTop: "24px", display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center" }}>
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={isReadOnly || tasksSaving}
                   style={{
-                    padding: "8px 14px",
+                    padding: "12px 20px",
                     fontSize: "14px",
-                    borderRadius: "4px",
-                    border: "1px solid #de350b",
-                    background: "white",
-                    color: "#de350b",
+                    fontWeight: 700,
+                    borderRadius: "10px",
+                    border: "none",
+                    background: isReadOnly || tasksSaving 
+                      ? "#f1f5f9" 
+                      : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                    color: isReadOnly || tasksSaving ? "#cbd5e1" : "white",
                     cursor: isReadOnly || tasksSaving ? "not-allowed" : "pointer",
+                    boxShadow: isReadOnly || tasksSaving 
+                      ? "none" 
+                      : "0 4px 12px rgba(239, 68, 68, 0.4)",
                     opacity: isReadOnly ? 0.6 : 1,
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!(isReadOnly || tasksSaving)) {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "0 6px 16px rgba(239, 68, 68, 0.5)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = isReadOnly || tasksSaving 
+                      ? "none" 
+                      : "0 4px 12px rgba(239, 68, 68, 0.4)";
                   }}
                 >
+                  <Trash2 size={16} />
                   Delete task
                 </button>
 
-                <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ display: "flex", gap: "12px" }}>
                   <button
                     type="button"
                     onClick={handleCloseTaskModal}
                     disabled={tasksSaving}
                     style={{
-                      padding: "8px 14px",
+                      padding: "12px 20px",
                       fontSize: "14px",
-                      borderRadius: "4px",
-                      border: "1px solid #c1c7d0",
+                      fontWeight: 700,
+                      borderRadius: "10px",
+                      border: "2px solid #e2e8f0",
                       background: "white",
-                      cursor: tasksSaving ? "default" : "pointer",
+                      color: "#64748b",
+                      cursor: tasksSaving ? "not-allowed" : "pointer",
+                      transition: "all 0.2s ease",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!tasksSaving) {
+                        e.currentTarget.style.borderColor = "#cbd5e1";
+                        e.currentTarget.style.background = "#f8fafc";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                      e.currentTarget.style.background = "white";
                     }}
                   >
+                    <X size={16} />
                     Cancel
                   </button>
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleSaveTask}
                     disabled={isReadOnly || tasksSaving || !editTitle.trim()}
                     style={{
-                      padding: "8px 14px",
+                      padding: "12px 24px",
                       fontSize: "14px",
-                      borderRadius: "4px",
+                      fontWeight: 700,
+                      borderRadius: "10px",
                       border: "none",
-                      background: isReadOnly || tasksSaving || !editTitle.trim() ? "#c1c7d0" : "#0052cc",
+                      background: isReadOnly || tasksSaving || !editTitle.trim() 
+                        ? "#cbd5e1" 
+                        : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                       color: "white",
-                      cursor: isReadOnly || tasksSaving || !editTitle.trim() ? "default" : "pointer",
+                      cursor: isReadOnly || tasksSaving || !editTitle.trim() ? "not-allowed" : "pointer",
+                      boxShadow: isReadOnly || tasksSaving || !editTitle.trim()
+                        ? "none"
+                        : "0 4px 12px rgba(102, 126, 234, 0.4)",
                       opacity: isReadOnly ? 0.6 : 1,
+                      transition: "all 0.2s ease",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!(isReadOnly || tasksSaving || !editTitle.trim())) {
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.boxShadow = "0 6px 16px rgba(102, 126, 234, 0.5)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = isReadOnly || tasksSaving || !editTitle.trim()
+                        ? "none"
+                        : "0 4px 12px rgba(102, 126, 234, 0.4)";
                     }}
                   >
-                    {tasksSaving ? "Saving…" : "Save changes"}
+                    {tasksSaving ? (
+                      <>
+                        <div
+                          style={{
+                            width: "14px",
+                            height: "14px",
+                            border: "2px solid rgba(255, 255, 255, 0.3)",
+                            borderTopColor: "white",
+                            borderRadius: "50%",
+                            animation: "spin 0.8s linear infinite",
+                          }}
+                        />
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        <Save size={16} />
+                        Save changes
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
 
               {isReadOnly && (
-                <p style={{ marginTop: 8, fontSize: 11, color: "#6b778c" }}>
+                <p style={{ marginTop: 12, fontSize: 12, color: "#64748b", textAlign: "center", fontWeight: 600 }}>
                   You have read-only access in this workspace; task changes are disabled.
                 </p>
               )}
-            </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Enhanced Delete Confirmation Modal */}
       {showDeleteConfirm && selectedTask && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.6)",
+            background: "rgba(0, 0, 0, 0.8)",
+            backdropFilter: "blur(4px)",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             zIndex: 1100,
+            animation: "fadeIn 0.2s ease",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !tasksSaving) {
+              setShowDeleteConfirm(false);
+            }
           }}
         >
           <div
             style={{
               background: "white",
-              padding: "24px",
-              borderRadius: "10px",
+              padding: "32px",
+              borderRadius: "20px",
               width: "100%",
-              maxWidth: "400px",
-              boxShadow: "0 12px 32px rgba(9,30,66,0.35)",
+              maxWidth: "480px",
+              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.4)",
+              animation: "slideUp 0.3s ease",
             }}
           >
-            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#172b4d", marginBottom: "8px" }}>
-              Delete task?
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "14px",
+                background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "20px",
+                boxShadow: "0 8px 20px rgba(239, 68, 68, 0.3)",
+              }}
+            >
+              <AlertTriangle size={28} color="white" strokeWidth={2.5} />
+            </div>
+
+            <h3 style={{ 
+              fontSize: "24px", 
+              fontWeight: 800, 
+              color: "#1e293b", 
+              marginBottom: "12px",
+              letterSpacing: "-0.4px",
+            }}>
+              Delete Task?
             </h3>
-            <p style={{ fontSize: "14px", color: "#6b778c", marginBottom: "20px" }}>
-              Are you sure you want to delete <strong>"{selectedTask.title}"</strong>? This action cannot be undone.
-            </p>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+            
+            <div
+              style={{
+                padding: "16px",
+                background: "#fef2f2",
+                borderRadius: "12px",
+                border: "2px solid #fecaca",
+                marginBottom: "24px",
+              }}
+            >
+              <p style={{ 
+                fontSize: "15px", 
+                color: "#991b1b", 
+                marginBottom: "12px",
+                fontWeight: 600,
+                lineHeight: "1.5",
+              }}>
+                Are you sure you want to delete <strong>"{selectedTask.title}"</strong>?
+              </p>
+              <div
+                style={{
+                  padding: "12px",
+                  background: "white",
+                  borderRadius: "8px",
+                  border: "1px solid #fecaca",
+                }}
+              >
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "#991b1b", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  ⚠️ Warning
+                </div>
+                <div style={{ fontSize: "13px", color: "#b91c1c", lineHeight: "1.5" }}>
+                  This action is <strong>permanent</strong> and cannot be undone. All subtasks will also be deleted.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={tasksSaving}
                 style={{
-                  padding: "8px 16px",
+                  padding: "12px 24px",
                   fontSize: "14px",
-                  borderRadius: "4px",
-                  border: "1px solid #c1c7d0",
+                  fontWeight: 700,
+                  borderRadius: "10px",
+                  border: "2px solid #e2e8f0",
                   background: "white",
-                  cursor: tasksSaving ? "default" : "pointer",
+                  color: "#64748b",
+                  cursor: tasksSaving ? "not-allowed" : "pointer",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (!tasksSaving) {
+                    e.currentTarget.style.borderColor = "#cbd5e1";
+                    e.currentTarget.style.background = "#f8fafc";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#e2e8f0";
+                  e.currentTarget.style.background = "white";
                 }}
               >
                 Cancel
@@ -1567,21 +2288,84 @@ export default function ProjectPage() {
                 onClick={handleDeleteTask}
                 disabled={tasksSaving}
                 style={{
-                  padding: "8px 16px",
+                  padding: "12px 28px",
                   fontSize: "14px",
-                  borderRadius: "4px",
+                  fontWeight: 700,
+                  borderRadius: "10px",
                   border: "none",
-                  background: "#de350b",
+                  background: tasksSaving 
+                    ? "#cbd5e1" 
+                    : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
                   color: "white",
-                  cursor: tasksSaving ? "default" : "pointer",
+                  cursor: tasksSaving ? "not-allowed" : "pointer",
+                  boxShadow: tasksSaving 
+                    ? "none" 
+                    : "0 4px 12px rgba(239, 68, 68, 0.4)",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+                onMouseEnter={(e) => {
+                  if (!tasksSaving) {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(239, 68, 68, 0.5)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = tasksSaving 
+                    ? "none" 
+                    : "0 4px 12px rgba(239, 68, 68, 0.4)";
                 }}
               >
-                {tasksSaving ? "Deleting…" : "Delete"}
+                {tasksSaving ? (
+                  <>
+                    <div
+                      style={{
+                        width: "14px",
+                        height: "14px",
+                        border: "2px solid rgba(255, 255, 255, 0.3)",
+                        borderTopColor: "white",
+                        borderRadius: "50%",
+                        animation: "spin 0.8s linear infinite",
+                      }}
+                    />
+                    Deleting…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    Delete
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }
