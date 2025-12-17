@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Users, Link as LinkIcon } from "lucide-react";
+import { Users, Link as LinkIcon, UserPlus, Crown, Shield, Eye, Trash2, Mail, Calendar, AlertTriangle } from "lucide-react";
 import {
   useWorkspaceStore,
   type WorkspaceRole,
@@ -89,6 +89,32 @@ function displayEmailFromUser(user: { email?: string | null }) {
   const email = (user.email || "").trim();
   if (!email || email.endsWith("@placeholder.local")) return "";
   return email;
+}
+
+function getRoleIcon(role: WorkspaceRole) {
+  switch (role) {
+    case "OWNER":
+      return <Crown size={14} />;
+    case "ADMIN":
+      return <Shield size={14} />;
+    case "VIEWER":
+      return <Eye size={14} />;
+    default:
+      return <Users size={14} />;
+  }
+}
+
+function getRoleColor(role: WorkspaceRole) {
+  switch (role) {
+    case "OWNER":
+      return { bg: "#fef3c7", color: "#92400e", border: "#fde68a" };
+    case "ADMIN":
+      return { bg: "#dbeafe", color: "#1e40af", border: "#bfdbfe" };
+    case "VIEWER":
+      return { bg: "#f3f4f6", color: "#4b5563", border: "#e5e7eb" };
+    default:
+      return { bg: "#f0fdf4", color: "#166534", border: "#bbf7d0" };
+  }
 }
 
 export function WorkspaceMembersCard() {
@@ -211,26 +237,26 @@ export function WorkspaceMembersCard() {
 
   // ===== Handlers =====
 
-  const handleInviteSubmit = async (e: React.FormEvent) => {
+  const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeWorkspaceId || !inviteEmail.trim()) return;
+    if (!activeWorkspaceId || !inviteEmail.trim() || inviteSaving) return;
 
-    try {
-      setInviteSaving(true);
-      setGlobalError(null);
-      const created = await inviteWorkspaceMember(callApi, activeWorkspaceId, {
-        email: inviteEmail.trim(),
-        role: inviteRole,
-      });
+    setInviteSaving(true);
+    setGlobalError(null);
+    
+    inviteWorkspaceMember(callApi, activeWorkspaceId, {
+      email: inviteEmail.trim(),
+      role: inviteRole,
+    }).then((created) => {
       setInvites((prev) => [created, ...prev]);
       setInviteEmail("");
       setInviteRole("MEMBER");
       setInviteOpen(false);
-    } catch (err: any) {
+    }).catch((err: any) => {
       setGlobalError(normalizeApiError(err));
-    } finally {
+    }).finally(() => {
       setInviteSaving(false);
-    }
+    });
   };
 
   const handleChangeRole = async (memberId: string, role: WorkspaceRole) => {
@@ -382,10 +408,11 @@ export function WorkspaceMembersCard() {
     <div
       style={{
         background: "white",
-        borderRadius: "10px",
-        border: "1px solid #e1e5e9",
-        padding: "20px",
-        boxShadow: "0 1px 4px rgba(9,30,66,0.08)",
+        borderRadius: "16px",
+        border: "1px solid #e2e8f0",
+        padding: "24px",
+        boxShadow: "0 4px 16px rgba(0, 0, 0, 0.06)",
+        marginBottom: "24px",
       }}
     >
       {/* Header */}
@@ -394,7 +421,9 @@ export function WorkspaceMembersCard() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          marginBottom: "12px",
+          marginBottom: "20px",
+          paddingBottom: "16px",
+          borderBottom: "2px solid #f1f5f9",
         }}
       >
         <div>
@@ -402,34 +431,45 @@ export function WorkspaceMembersCard() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              marginBottom: "2px",
+              gap: "10px",
+              marginBottom: "6px",
             }}
           >
-            <Users size={18} color="#0052cc" />
+          
             <h3
               style={{
-                fontSize: "16px",
-                fontWeight: 700,
-                color: "#172b4d",
+                fontSize: "18px",
+                fontWeight: 800,
+                color: "#1e293b",
                 margin: 0,
+                letterSpacing: "-0.3px",
               }}
             >
-              Workspace members
+              Workspace Members
             </h3>
           </div>
           <p
             style={{
-              fontSize: "12px",
-              color: "#6b778c",
+              fontSize: "13px",
+              color: "#64748b",
               margin: 0,
+              paddingLeft: "0px",
+              fontWeight: 500,
             }}
           >
             {workspaceName}
             {currentRole && (
               <>
                 {" "}
-                · Your role: <strong>{currentRole.toLowerCase()}</strong>
+                · Your role:{" "}
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: getRoleColor(currentRole).color,
+                  }}
+                >
+                  {currentRole.toLowerCase()}
+                </span>
               </>
             )}
           </p>
@@ -440,19 +480,31 @@ export function WorkspaceMembersCard() {
             type="button"
             onClick={() => setInviteOpen(true)}
             style={{
-              padding: "6px 10px",
-              borderRadius: "6px",
+              padding: "10px 16px",
+              borderRadius: "10px",
               border: "none",
-              fontSize: "12px",
-              background:
-                "linear-gradient(135deg, #0052cc 0%, #0065ff 100%)",
+              fontSize: "13px",
+              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
               color: "white",
               cursor: "pointer",
-              fontWeight: 600,
-              boxShadow: "0 1px 4px rgba(0,82,204,0.3)",
+              fontWeight: 700,
+              boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 6px 16px rgba(16, 185, 129, 0.4)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.3)";
             }}
           >
-            Invite
+            <UserPlus size={16} />
+            
           </button>
         )}
       </div>
@@ -460,9 +512,14 @@ export function WorkspaceMembersCard() {
       {globalError && (
         <div
           style={{
-            marginBottom: "8px",
-            fontSize: "12px",
-            color: "#de350b",
+            marginBottom: "16px",
+            fontSize: "13px",
+            color: "#ef4444",
+            background: "#fef2f2",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            border: "1px solid #fecaca",
+            fontWeight: 600,
           }}
         >
           {globalError}
@@ -472,27 +529,34 @@ export function WorkspaceMembersCard() {
       {/* Members list */}
       <div
         style={{
-          marginBottom: "16px",
+          marginBottom: "24px",
         }}
       >
         <h4
           style={{
-            fontSize: "13px",
-            fontWeight: 600,
-            color: "#6b778c",
+            fontSize: "14px",
+            fontWeight: 800,
+            color: "#475569",
             margin: 0,
-            marginBottom: "6px",
+            marginBottom: "12px",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
           }}
         >
-          Members
+          Active Members
         </h4>
 
         {membersError && (
           <div
             style={{
-              fontSize: "12px",
-              color: "#de350b",
-              marginBottom: "4px",
+              fontSize: "13px",
+              color: "#ef4444",
+              background: "#fef2f2",
+              padding: "12px 16px",
+              borderRadius: "10px",
+              border: "1px solid #fecaca",
+              marginBottom: "12px",
+              fontWeight: 600,
             }}
           >
             {membersError}
@@ -502,28 +566,48 @@ export function WorkspaceMembersCard() {
         {membersLoading ? (
           <div
             style={{
-              fontSize: "13px",
-              color: "#6b778c",
+              fontSize: "14px",
+              color: "#64748b",
+              textAlign: "center",
+              padding: "32px 16px",
+              background: "#f8fafc",
+              borderRadius: "12px",
             }}
           >
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                margin: "0 auto 12px",
+                borderRadius: "50%",
+                border: "3px solid #e2e8f0",
+                borderTopColor: "#10b981",
+                animation: "spin 1s linear infinite",
+              }}
+            />
             Loading members…
           </div>
         ) : members.length === 0 ? (
           <div
             style={{
-              fontSize: "13px",
-              color: "#6b778c",
-              fontStyle: "italic",
+              fontSize: "14px",
+              color: "#64748b",
+              textAlign: "center",
+              padding: "32px 16px",
+              background: "#f8fafc",
+              borderRadius: "12px",
+              border: "2px dashed #cbd5e1",
             }}
           >
-            No members yet.
+            <Users size={32} color="#94a3b8" style={{ marginBottom: "8px" }} />
+            <div style={{ fontWeight: 600 }}>No members yet</div>
           </div>
         ) : (
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "8px",
+              gap: "10px",
             }}
           >
             {members.map((m) => {
@@ -532,6 +616,7 @@ export function WorkspaceMembersCard() {
 
               const isOwner = m.role === "OWNER";
               const isLastOwner = isOwner && ownerCount === 1;
+              const roleColors = getRoleColor(m.role);
 
               return (
                 <div
@@ -540,38 +625,59 @@ export function WorkspaceMembersCard() {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    gap: "8px",
+                    gap: "12px",
+                    padding: "14px 16px",
+                    background: "#f8fafc",
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "white";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.08)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#f8fafc";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px",
+                      gap: "12px",
+                      flex: 1,
+                      minWidth: 0,
                     }}
                   >
                     <div
                       style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: "999px",
-                        background: "#f4f5f7",
+                        width: 44,
+                        height: 44,
+                        borderRadius: "12px",
+                        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        color: "#42526e",
+                        fontSize: "16px",
+                        fontWeight: 800,
+                        color: "white",
+                        flexShrink: 0,
+                        boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
                       }}
                     >
                       {getInitials(displayName || displayEmail)}
                     </div>
-                    <div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
-                          fontSize: "13px",
-                          fontWeight: 500,
-                          color: "#172b4d",
+                          fontSize: "14px",
+                          fontWeight: 700,
+                          color: "#1e293b",
+                          marginBottom: "2px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {displayName}
@@ -579,10 +685,17 @@ export function WorkspaceMembersCard() {
                       {displayEmail && (
                         <div
                           style={{
-                            fontSize: "11px",
-                            color: "#6b778c",
+                            fontSize: "12px",
+                            color: "#64748b",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
                           }}
                         >
+                          <Mail size={12} />
                           {displayEmail}
                         </div>
                       )}
@@ -593,20 +706,29 @@ export function WorkspaceMembersCard() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "6px",
+                      gap: "8px",
+                      flexShrink: 0,
                     }}
                   >
                     {canManageMembers ? (
                       isLastOwner ? (
-                        <span
+                        <div
                           style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "6px 12px",
+                            background: roleColors.bg,
+                            color: roleColors.color,
+                            borderRadius: "8px",
                             fontSize: "12px",
-                            color: "#6b778c",
-                            fontWeight: 500,
+                            fontWeight: 700,
+                            border: `1px solid ${roleColors.border}`,
                           }}
                         >
+                          {getRoleIcon(m.role)}
                           owner (required)
-                        </span>
+                        </div>
                       ) : (
                         <select
                           value={m.role}
@@ -618,11 +740,22 @@ export function WorkspaceMembersCard() {
                           }
                           disabled={roleSavingId === m.id}
                           style={{
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            border: "1px solid #dfe1e6",
-                            fontSize: "12px",
+                            padding: "8px 12px",
+                            borderRadius: "8px",
+                            border: "2px solid #e2e8f0",
+                            fontSize: "13px",
                             background: "white",
+                            fontWeight: 600,
+                            cursor: roleSavingId === m.id ? "not-allowed" : "pointer",
+                            transition: "all 0.2s ease",
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = "#10b981";
+                            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = "#e2e8f0";
+                            e.currentTarget.style.boxShadow = "none";
                           }}
                         >
                           {canPromoteToOwner && (
@@ -634,14 +767,23 @@ export function WorkspaceMembersCard() {
                         </select>
                       )
                     ) : (
-                      <span
+                      <div
                         style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "6px 12px",
+                          background: roleColors.bg,
+                          color: roleColors.color,
+                          borderRadius: "8px",
                           fontSize: "12px",
-                          color: "#6b778c",
+                          fontWeight: 700,
+                          border: `1px solid ${roleColors.border}`,
                         }}
                       >
+                        {getRoleIcon(m.role)}
                         {m.role.toLowerCase()}
-                      </span>
+                      </div>
                     )}
 
                     {canManageMembers && m.role !== "OWNER" && (
@@ -652,15 +794,43 @@ export function WorkspaceMembersCard() {
                         style={{
                           border: "none",
                           background: "transparent",
-                          color: "#de350b",
-                          fontSize: "11px",
+                          color: "#ef4444",
+                          fontSize: "12px",
                           cursor:
                             removeSavingId === m.id
                               ? "not-allowed"
                               : "pointer",
+                          padding: "8px",
+                          borderRadius: "8px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          fontWeight: 600,
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (removeSavingId !== m.id) {
+                            e.currentTarget.style.background = "#fef2f2";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "transparent";
                         }}
                       >
-                        {removeSavingId === m.id ? "…" : "Remove"}
+                        {removeSavingId === m.id ? (
+                          <div
+                            style={{
+                              width: "14px",
+                              height: "14px",
+                              border: "2px solid #fecaca",
+                              borderTopColor: "#ef4444",
+                              borderRadius: "50%",
+                              animation: "spin 0.8s linear infinite",
+                            }}
+                          />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
                       </button>
                     )}
                   </div>
@@ -676,22 +846,29 @@ export function WorkspaceMembersCard() {
         <div>
           <h4
             style={{
-              fontSize: "13px",
-              fontWeight: 600,
-              color: "#6b778c",
+              fontSize: "14px",
+              fontWeight: 800,
+              color: "#475569",
               margin: 0,
-              marginBottom: "6px",
+              marginBottom: "12px",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
             }}
           >
-            Pending invites
+            Pending Invites
           </h4>
 
           {invitesError && (
             <div
               style={{
-                fontSize: "12px",
-                color: "#de350b",
-                marginBottom: "4px",
+                fontSize: "13px",
+                color: "#ef4444",
+                background: "#fef2f2",
+                padding: "12px 16px",
+                borderRadius: "10px",
+                border: "1px solid #fecaca",
+                marginBottom: "12px",
+                fontWeight: 600,
               }}
             >
               {invitesError}
@@ -701,8 +878,12 @@ export function WorkspaceMembersCard() {
           {invitesLoading ? (
             <div
               style={{
-                fontSize: "13px",
-                color: "#6b778c",
+                fontSize: "14px",
+                color: "#64748b",
+                textAlign: "center",
+                padding: "20px 16px",
+                background: "#f8fafc",
+                borderRadius: "12px",
               }}
             >
               Loading invites…
@@ -711,82 +892,158 @@ export function WorkspaceMembersCard() {
             <div
               style={{
                 fontSize: "13px",
-                color: "#6b778c",
-                fontStyle: "italic",
+                color: "#64748b",
+                padding: "16px",
+                background: "#f8fafc",
+                borderRadius: "12px",
+                textAlign: "center",
+                border: "1px dashed #cbd5e1",
               }}
             >
-              No active invites.
+              No active invites
             </div>
           ) : (
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "8px",
+                gap: "10px",
               }}
             >
-              {invites.map((inv) => (
-                <div
-                  key={inv.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "8px 10px",
-                    borderRadius: "6px",
-                    background: "#f7f8fa",
-                    border: "1px dashed #dfe1e6",
-                  }}
-                >
+              {invites.map((inv) => {
+                const roleColors = getRoleColor(inv.role);
+                return (
                   <div
+                    key={inv.id}
                     style={{
                       display: "flex",
-                      flexDirection: "column",
-                      gap: "2px",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "13px",
-                        color: "#172b4d",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {inv.email}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        color: "#6b778c",
-                      }}
-                    >
-                      Role: <strong>{inv.role.toLowerCase()}</strong> ·
-                      Expires {formatDate(inv.expiresAt)}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyInviteLink(inv)}
-                    style={{
-                      display: "flex",
+                      justifyContent: "space-between",
                       alignItems: "center",
-                      gap: "4px",
-                      padding: "6px 10px",
-                      fontSize: "11px",
-                      borderRadius: "6px",
-                      border: "1px solid #0052cc",
-                      background: "white",
-                      color: "#0052cc",
-                      cursor: "pointer",
-                      fontWeight: 600,
+                      gap: "12px",
+                      padding: "14px 16px",
+                      borderRadius: "12px",
+                      background: "linear-gradient(135deg, #fef9c3 0%, #fef3c7 100%)",
+                      border: "2px dashed #fde68a",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(234, 179, 8, 0.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "none";
                     }}
                   >
-                    <LinkIcon size={12} />
-                    Copy link
-                  </button>
-                </div>
-              ))}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px",
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            background: "white",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                          }}
+                        >
+                          <Mail size={16} color="#ca8a04" />
+                        </div>
+                        <span
+                          style={{
+                            fontSize: "14px",
+                            color: "#92400e",
+                            fontWeight: 700,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {inv.email}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#a16207",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          flexWrap: "wrap",
+                          paddingLeft: "40px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "4px 8px",
+                            background: roleColors.bg,
+                            color: roleColors.color,
+                            borderRadius: "6px",
+                            fontWeight: 700,
+                            fontSize: "11px",
+                            border: `1px solid ${roleColors.border}`,
+                          }}
+                        >
+                          {getRoleIcon(inv.role)}
+                          {inv.role.toLowerCase()}
+                        </div>
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          <Calendar size={12} />
+                          Expires {formatDate(inv.expiresAt)}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyInviteLink(inv)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "10px 14px",
+                        fontSize: "12px",
+                        borderRadius: "10px",
+                        border: "none",
+                        background: "white",
+                        color: "#ca8a04",
+                        cursor: "pointer",
+                        fontWeight: 700,
+                        boxShadow: "0 2px 8px rgba(202, 138, 4, 0.2)",
+                        transition: "all 0.2s ease",
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(202, 138, 4, 0.3)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "0 2px 8px rgba(202, 138, 4, 0.2)";
+                      }}
+                    >
+                      <LinkIcon size={14} />
+                      Copy link
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -798,120 +1055,187 @@ export function WorkspaceMembersCard() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.5)",
+            background: "rgba(0, 0, 0, 0.6)",
+            backdropFilter: "blur(4px)",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             zIndex: 1200,
+            animation: "fadeIn 0.2s ease",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !inviteSaving) {
+              setInviteOpen(false);
+            }
           }}
         >
           <div
             style={{
               background: "white",
-              padding: "24px",
-              borderRadius: "10px",
+              padding: "32px",
+              borderRadius: "20px",
               width: "100%",
-              maxWidth: "420px",
-              boxShadow: "0 12px 32px rgba(9,30,66,0.35)",
+              maxWidth: "480px",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+              animation: "slideUp 0.3s ease",
             }}
           >
-            <h3
-              style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                color: "#172b4d",
-                marginBottom: "8px",
-              }}
-            >
-              Invite member
-            </h3>
-            <p
-              style={{
-                fontSize: "12px",
-                color: "#6b778c",
-                marginTop: 0,
-                marginBottom: "16px",
-              }}
-            >
-              Generate an invite link for this workspace. You can share it
-              manually via email or chat.
-            </p>
+            <div style={{ marginBottom: "24px" }}>
+              <div
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "12px",
+                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "16px",
+                  boxShadow: "0 4px 16px rgba(16, 185, 129, 0.3)",
+                }}
+              >
+                <UserPlus size={24} color="white" />
+              </div>
+              <h3
+                style={{
+                  fontSize: "24px",
+                  fontWeight: 800,
+                  color: "#1e293b",
+                  marginBottom: "8px",
+                  letterSpacing: "-0.4px",
+                }}
+              >
+                Invite Member
+              </h3>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  margin: 0,
+                  lineHeight: "1.5",
+                }}
+              >
+                Generate an invite link for this workspace. You can share it manually via email or chat.
+              </p>
+            </div>
 
             {globalError && (
               <div
                 style={{
-                  marginBottom: "8px",
-                  fontSize: "12px",
-                  color: "#de350b",
+                  marginBottom: "16px",
+                  fontSize: "13px",
+                  color: "#ef4444",
+                  background: "#fef2f2",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  border: "1px solid #fecaca",
+                  fontWeight: 600,
                 }}
               >
                 {globalError}
               </div>
             )}
 
-            <form
-              onSubmit={handleInviteSubmit}
-              style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-            >
-              <label
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  color: "#6b778c",
-                }}
-              >
-                Email address
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: "#475569",
+                    marginBottom: "8px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Email Address *
+                </label>
                 <input
                   type="email"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="colleague@company.com"
                   required
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleInviteSubmit(e);
+                    }
+                  }}
                   style={{
-                    marginTop: "4px",
-                    padding: "8px 10px",
-                    borderRadius: "4px",
-                    border: "1px solid #dfe1e6",
-                    fontSize: "14px",
                     width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    border: "2px solid #e2e8f0",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    outline: "none",
+                    transition: "all 0.2s ease",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#10b981";
+                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                 />
-              </label>
+              </div>
 
-              <label
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  color: "#6b778c",
-                }}
-              >
-                Role
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: "#475569",
+                    marginBottom: "8px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Role
+                </label>
                 <select
                   value={inviteRole}
                   onChange={(e) =>
                     setInviteRole(e.target.value as WorkspaceRole)
                   }
                   style={{
-                    marginTop: "4px",
-                    padding: "8px 10px",
-                    borderRadius: "4px",
-                    border: "1px solid #dfe1e6",
-                    fontSize: "14px",
-                    background: "white",
                     width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    border: "2px solid #e2e8f0",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    background: "white",
+                    outline: "none",
+                    transition: "all 0.2s ease",
+                    cursor: "pointer",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#10b981";
+                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                 >
                   <option value="ADMIN">Admin</option>
                   <option value="MEMBER">Member</option>
                   <option value="VIEWER">Viewer</option>
                 </select>
-              </label>
+              </div>
 
               <div
                 style={{
-                  marginTop: "16px",
+                  marginTop: "8px",
                   display: "flex",
                   justifyContent: "flex-end",
-                  gap: "8px",
+                  gap: "12px",
                   alignItems: "center",
                 }}
               >
@@ -920,39 +1244,94 @@ export function WorkspaceMembersCard() {
                   onClick={() => setInviteOpen(false)}
                   disabled={inviteSaving}
                   style={{
-                    padding: "8px 14px",
+                    padding: "12px 24px",
                     fontSize: "14px",
-                    borderRadius: "4px",
-                    border: "1px solid #c1c7d0",
+                    fontWeight: 700,
+                    borderRadius: "10px",
+                    border: "2px solid #e2e8f0",
                     background: "white",
-                    cursor: inviteSaving ? "default" : "pointer",
+                    color: "#64748b",
+                    cursor: inviteSaving ? "not-allowed" : "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!inviteSaving) {
+                      e.currentTarget.style.borderColor = "#cbd5e1";
+                      e.currentTarget.style.background = "#f8fafc";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.background = "white";
                   }}
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleInviteSubmit}
                   disabled={inviteSaving || !inviteEmail.trim()}
                   style={{
-                    padding: "8px 14px",
+                    padding: "12px 28px",
                     fontSize: "14px",
-                    borderRadius: "4px",
+                    fontWeight: 700,
+                    borderRadius: "10px",
                     border: "none",
                     background:
                       inviteSaving || !inviteEmail.trim()
-                        ? "#c1c7d0"
-                        : "linear-gradient(135deg, #0052cc 0%, #0065ff 100%)",
+                        ? "#cbd5e1"
+                        : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                     color: "white",
                     cursor:
                       inviteSaving || !inviteEmail.trim()
-                        ? "default"
+                        ? "not-allowed"
                         : "pointer",
+                    boxShadow:
+                      inviteSaving || !inviteEmail.trim()
+                        ? "none"
+                        : "0 4px 12px rgba(16, 185, 129, 0.4)",
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!inviteSaving && inviteEmail.trim()) {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "0 6px 16px rgba(16, 185, 129, 0.5)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow =
+                      inviteSaving || !inviteEmail.trim()
+                        ? "none"
+                        : "0 4px 12px rgba(16, 185, 129, 0.4)";
                   }}
                 >
-                  {inviteSaving ? "Generating…" : "Generate invite"}
+                  {inviteSaving ? (
+                    <>
+                      <div
+                        style={{
+                          width: "14px",
+                          height: "14px",
+                          border: "2px solid rgba(255, 255, 255, 0.3)",
+                          borderTopColor: "white",
+                          borderRadius: "50%",
+                          animation: "spin 0.8s linear infinite",
+                        }}
+                      />
+                      Generating…
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={16} />
+                      Generate invite
+                    </>
+                  )}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
@@ -963,42 +1342,69 @@ export function WorkspaceMembersCard() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.6)",
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             zIndex: 1300,
+            animation: "fadeIn 0.2s ease",
           }}
         >
           <div
             style={{
               background: "white",
-              padding: "24px",
-              borderRadius: "10px",
+              padding: "32px",
+              borderRadius: "20px",
               width: "100%",
-              maxWidth: "420px",
-              boxShadow: "0 16px 48px rgba(9,30,66,0.4)",
+              maxWidth: "460px",
+              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.4)",
+              animation: "slideUp 0.3s ease",
             }}
           >
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "12px",
+                background: confirmDialog.isDangerous
+                  ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+                  : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "16px",
+                boxShadow: confirmDialog.isDangerous
+                  ? "0 4px 16px rgba(239, 68, 68, 0.3)"
+                  : "0 4px 16px rgba(59, 130, 246, 0.3)",
+              }}
+            >
+              {confirmDialog.isDangerous ? (
+                <AlertTriangle size={24} color="white" />
+              ) : (
+                <Users size={24} color="white" />
+              )}
+            </div>
             <h3
               style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                color: "#172b4d",
+                fontSize: "22px",
+                fontWeight: 800,
+                color: "#1e293b",
                 margin: 0,
-                marginBottom: "8px",
+                marginBottom: "12px",
+                letterSpacing: "-0.3px",
               }}
             >
               {confirmDialog.title}
             </h3>
             <p
               style={{
-                fontSize: "14px",
-                color: "#6b778c",
-                lineHeight: "1.5",
+                fontSize: "15px",
+                color: "#64748b",
+                lineHeight: "1.6",
                 whiteSpace: "pre-line",
                 margin: 0,
-                marginBottom: "20px",
+                marginBottom: "24px",
               }}
             >
               {confirmDialog.message}
@@ -1008,20 +1414,30 @@ export function WorkspaceMembersCard() {
               style={{
                 display: "flex",
                 justifyContent: "flex-end",
-                gap: "8px",
+                gap: "12px",
               }}
             >
               <button
                 type="button"
                 onClick={() => setConfirmDialog(null)}
                 style={{
-                  padding: "8px 14px",
+                  padding: "12px 24px",
                   fontSize: "14px",
-                  borderRadius: "4px",
-                  border: "1px solid #c1c7d0",
+                  fontWeight: 700,
+                  borderRadius: "10px",
+                  border: "2px solid #e2e8f0",
                   background: "white",
+                  color: "#64748b",
                   cursor: "pointer",
-                  fontWeight: 500,
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#cbd5e1";
+                  e.currentTarget.style.background = "#f8fafc";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#e2e8f0";
+                  e.currentTarget.style.background = "white";
                 }}
               >
                 {confirmDialog.cancelText}
@@ -1033,16 +1449,32 @@ export function WorkspaceMembersCard() {
                   setConfirmDialog(null);
                 }}
                 style={{
-                  padding: "8px 14px",
+                  padding: "12px 28px",
                   fontSize: "14px",
-                  borderRadius: "4px",
+                  fontWeight: 700,
+                  borderRadius: "10px",
                   border: "none",
                   background: confirmDialog.isDangerous
-                    ? "linear-gradient(135deg, #de350b 0%, #f45e3f 100%)"
-                    : "linear-gradient(135deg, #0052cc 0%, #0065ff 100%)",
+                    ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+                    : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
                   color: "white",
                   cursor: "pointer",
-                  fontWeight: 600,
+                  boxShadow: confirmDialog.isDangerous
+                    ? "0 4px 12px rgba(239, 68, 68, 0.4)"
+                    : "0 4px 12px rgba(59, 130, 246, 0.4)",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = confirmDialog.isDangerous
+                    ? "0 6px 16px rgba(239, 68, 68, 0.5)"
+                    : "0 6px 16px rgba(59, 130, 246, 0.5)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = confirmDialog.isDangerous
+                    ? "0 4px 12px rgba(239, 68, 68, 0.4)"
+                    : "0 4px 12px rgba(59, 130, 246, 0.4)";
                 }}
               >
                 {confirmDialog.confirmText}
@@ -1051,6 +1483,28 @@ export function WorkspaceMembersCard() {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
