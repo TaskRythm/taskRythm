@@ -128,6 +128,7 @@ export default function Dashboard({ user }: DashboardProps) {
     }
   }
 
+  // New project modal state
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
@@ -299,7 +300,7 @@ export default function Dashboard({ user }: DashboardProps) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom, #0080ffff 0%, #f1f5f9 100%)", padding: 0 }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%)", padding: 0 }}>
       {/* Enhanced Dashboard Header with Gradient */}
       <div style={{ 
         background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", 
