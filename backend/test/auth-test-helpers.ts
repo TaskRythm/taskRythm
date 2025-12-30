@@ -1,12 +1,25 @@
-import { ExecutionContext } from '@nestjs/common';
-import { JwtAuthGuard } from '../src/auth/jwt.guard';
+import { ExecutionContext, Injectable } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from '../src/auth/public.decorator';
 
 /**
  * Mock JWT Auth Guard for testing
  * This bypasses actual JWT validation and allows you to test with mock users
  */
+@Injectable()
 export class MockJwtAuthGuard {
+  constructor(private readonly reflector?: Reflector) {}
+
   canActivate(context: ExecutionContext): boolean {
+    // Check if route is public (same logic as JwtAuthGuard)
+    if (this.reflector) {
+      const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+      if (isPublic) return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     // Set a default mock user if none exists
     request.user = request.user || {
