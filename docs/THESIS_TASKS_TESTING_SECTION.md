@@ -32,6 +32,18 @@ The primary goals of this testing implementation were:
    - Tests HTTP endpoints and request handling
    - 100% pass rate
 
+### Projects Module Tests
+
+3. **backend/src/projects/projects.service.spec.ts**
+   - 27 unit tests for service layer
+   - Tests CRUD operations and RBAC
+   - 100% pass rate
+
+4. **backend/src/projects/projects.controller.spec.ts**
+   - 17 unit tests for controller layer
+   - Tests HTTP endpoints and Auth0 integration
+   - 100% pass rate
+
 ### Authentication & Backend Tests
 
 3. **backend/test/app.e2e-spec.ts**
@@ -79,10 +91,10 @@ The primary goals of this testing implementation were:
     - Complete test coverage analysis
 
 **Total Testing Achievement:**
-- **Backend Unit Tests**: 66 tests (includes Tasks: 42, Auth: 24)
+- **Backend Unit Tests**: 110 tests (Tasks: 42, Projects: 44, Auth: 24)
 - **Backend E2E Tests**: 6 tests
 - **Frontend Tests**: 20 tests
-- **Grand Total**: 92 tests across entire application
+- **Grand Total**: 136 tests across entire application
 - **Success Rate**: 100% pass rate
 
 ---
@@ -474,16 +486,152 @@ Execution Time: ~2.3 seconds
 
 | Test Category | Test Suites | Tests | Pass Rate | Execution Time |
 |--------------|-------------|-------|-----------|----------------|
-| Backend Unit | 8 | 66 | 100% | ~2.0s |
+| Backend Unit | 10 | 110 | 100% | ~4.0s |
 | Backend E2E | 2 | 6 | 100% | ~2.3s |
 | Frontend | 4 | 20 | 100% | ~2.3s |
-| **TOTAL** | **14** | **92** | **100%** | **~6.6s** |
+| **TOTAL** | **16** | **136** | **100%** | **~8.6s** |
+
+---
+
+## Projects Module Testing Implementation
+
+### Overview
+
+Following the successful Tasks module implementation, I created comprehensive unit tests for the Projects module with 44 tests covering all CRUD operations, RBAC authorization, and error handling scenarios.
+
+### Projects Service Tests (27 tests)
+
+**Test Categories:**
+
+1. **listByWorkspace** (5 tests)
+  Projects Module**:
+- ✅ 44 comprehensive unit tests implemented
+- ✅ Complete RBAC testing for all workspace roles
+- ✅ Cascade delete operations with transaction testing
+- ✅ Auth0 integration testing (auth0Id and sub fields)
+
+**Authentication System**:
+- ✅ 24 authentication-related tests
+- ✅ Frontend auth components tested
+- ✅ Backend auth guards and decorators validated
+- ✅ E2E authentication flows verified
+
+**Application-Wide**:
+- ✅ 136 total tests across entire application
+- ✅ 100% test success rate
+- ✅ Fast execution (~8th archived flag
+   - Throw ForbiddenException for non-member
+
+3. **findOne** (3 tests)
+   - Find project for workspace member
+   - Throw NotFoundException for non-existent project
+   - Throw ForbiddenException for non-member
+
+4. **update** (5 tests)
+   - Update project name and description
+   - Update only provided fields (partial updates)
+   - Update archived status
+   - Throw NotFoundException for non-existent project
+   - Throw ForbiddenException for non-member
+
+5. **archive** (3 tests)
+   - Archive project (soft delete)
+   - Throw NotFoundException for non-existent project
+   - Throw ForbiddenException for non-member
+
+6. **deleteProjectForUser** (7 tests)
+   - Delete project with tasks for workspace owner
+   - Delete project without tasks
+   - Allow admin to delete project
+   - Throw NotFoundException for non-existent project
+   - Throw ForbiddenException for member (not owner/admin)
+   - Throw ForbiddenException for viewer
+   - Throw ForbiddenException for non-member
+
+### Projects Controller Tests (17 tests)
+
+**Test Categories:**
+
+1. **listProjects** (3 tests)
+   - List projects for a workspace
+   - Handle Auth0 user with sub instead of auth0Id
+   - Return empty array when no projects exist
+
+2. **createProject** (2 tests)
+   - Create a new project
+   - Create project without description
+
+3. **getProject** (1 test)
+   - Get a specific project
+
+4. **updateProject** (3 tests)
+   - Update project name and description
+   - Update only the name
+   - Update archived status
+
+5. **archiveProject** (2 tests)
+   - Archive a project
+   - Handle archiving an already archived project
+
+6. **deleteProject** (2 tests)
+   - Delete a project
+   - Return success even if service returns void
+
+7. **getOrCreateUserId Integration** (4 tests)
+   - Call ensureUser with correct parameters
+   - Use sub field when auth0Id is not present
+   - Pass internal user ID to service methods
+
+### Projects Mocking Strategy
+
+**Service Tests:**
+- **PrismaService**: Mocked all database operations
+  - `workspace.findUnique`
+  - `workspaceMember.findFirst`
+  - `project.findMany/findUnique/create/update/delete`
+  - `task.findMany/deleteMany`
+  - `activityLog.deleteMany`
+  - `subtask.deleteMany`
+  - `$transaction`
+
+**Controller Tests:**
+- **ProjectsService**: Mocked all business logic methods
+- **WorkspacesService**: Mocked `ensureUser` for Auth0 integration
+- **WorkspaceRoleGuard**: Overridden to always allow access
+
+### RBAC Testing Coverage
+
+Tests verify role-based access control for:
+- **OWNER**: Full access to all operations
+- **ADMIN**: Can delete/archive projects
+- **MEMBER**: Can create, read, update (but not delete/archive)
+- **VIEWER**: Can only read projects
+- **Non-members**: Denied access with ForbiddenException
+
+### Projects Test Results
+
+```
+Test Suites: 2 passed, 2 total
+Tests:       44 passed, 44 total
+Execution Time: ~2-3 seconds
+```
+
+### Why Unit Tests for Projects?
+
+After attempting multiple e2e test approaches for Projects, we pivoted to unit tests because:
+
+1. **Authentication Complexity**: Global `APP_GUARD` with JWT makes e2e auth mocking extremely difficult
+2. **Multiple Guard Layers**: Both global `JwtAuthGuard` and route-level `WorkspaceRoleGuard` compound complexity
+3. **Better Coverage**: Unit tests provide more granular control and better isolation
+4. **Faster Execution**: Unit tests run significantly faster (~2-3s vs 10-15s+ for e2e)
+5. **Easier Maintenance**: No need to manage test database, Auth0 tokens, or complex guard overrides
+6. **Industry Best Practice**: Most professional projects use unit tests for business logic coverage
 
 ---
 
 ## Conclusion
 
-This comprehensive testing implementation achieved full coverage across the entire TaskRythm application with 92 tests spanning backend, frontend, and end-to-end scenarios. The multi-layer testing approach ensures reliability at every level of the application stack.
+This comprehensive testing implementation achieved full coverage across the entire TaskRythm application with 136 tests spanning backend, frontend, and end-to-end scenarios. The multi-layer testing approach ensures reliability at every level of the application stack.
 
 ### Key Achievements:
 
@@ -585,11 +733,12 @@ npm test -- tasks.controller.spec.ts
 # Run with coverage report
 npm test -- --coverage tasks
 
-# Run in watch mode
-npm test -- --watch tasks
-```
-
----
+# Run in watch mode- January 3, 2026  
+**Test Suites**: Tasks Module, Projects Module  
+**Tests Implemented**: 86 backend unit tests (Tasks: 42, Projects: 44)  
+**Total Application Tests**: 136 tests  
+**Success Rate**: 100%  
+**Total Execution Time**: ~8.6
 
 **Implementation Date**: December 30, 2025  
 **Test Suite**: Tasks Module  
