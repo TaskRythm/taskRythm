@@ -127,6 +127,7 @@ describe('useAuth Hook', () => {
     expect(global.fetch).toHaveBeenCalledWith(
       'http://localhost:4000/auth/me',
       {
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${mockToken}`,

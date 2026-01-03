@@ -106,8 +106,8 @@ export class TasksService {
         project: { connect: { id: dto.projectId } },
         createdBy: { connect: { id: userId } },
 
-        assignedTo: dto.assignedToUserId
-          ? { connect: { id: dto.assignedToUserId } }
+        assignedTo: dto.assignedToId
+          ? { connect: { id: dto.assignedToId } }
           : undefined,
 
         // ✅ FIX: parent relation, not parentTaskId
@@ -142,9 +142,9 @@ export class TasksService {
       data.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
     }
 
-    if (dto.assignedToUserId !== undefined) {
-      data.assignedTo = dto.assignedToUserId
-        ? { connect: { id: dto.assignedToUserId } }
+    if (dto.assignedToId !== undefined) {
+      data.assignedTo = dto.assignedToId
+        ? { connect: { id: dto.assignedToId } }
         : { disconnect: true };
     }
 

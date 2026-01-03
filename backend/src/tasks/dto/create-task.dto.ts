@@ -28,9 +28,9 @@ export class CreateTaskDto {
   @IsDateString()
   dueDate?: string;
 
-  @IsOptional()
+  @IsOptional()    
   @IsUUID()
-  assignedToUserId?: string;
+  assignedToId?: string;
 
   @IsOptional()
   @IsInt()

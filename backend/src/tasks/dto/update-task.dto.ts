@@ -23,8 +23,9 @@ export class UpdateTaskDto {
   dueDate?: string;
 
   @IsOptional()
+  @ValidateIf((o) => o.assignedToId !== null)
   @IsUUID()
-  assignedToUserId?: string;
+  assignedToId?: string | null;
 
   @IsOptional()
   @IsInt()
