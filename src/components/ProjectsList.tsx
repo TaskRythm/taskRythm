@@ -6,10 +6,12 @@ import Link from 'next/link';
 import AiProjectModal from './AiProjectModal'; // 👈 Import the Modal
 import { useProjects } from '../hooks/useProjects'; // Assuming you have this hook
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function ProjectsList() {
-  const { projects, isLoading, createProject } = useProjects(); // Your existing data hook
+  const { projects, loading, createProject } = useProjects(); // Your existing data hook
   const { user } = useAuth();
+  const toast = useToast();
   
   // 👇 State for the AI Modal
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -23,13 +25,13 @@ export default function ProjectsList() {
       // 2. Call your existing create logic
       // Note: You'll need to update your createProject API to accept 'initialTasks' if not supported yet.
       // For now, let's just log it to prove it works.
-      console.log("🚀 Creating Project:", newProjectTitle);
+      console.log("Creating Project:", newProjectTitle);
       console.log("📋 With Tasks:", tasks);
 
       // TODO: Call your actual API here:
       // await createProject({ title: newProjectTitle, tasks: tasks });
 
-      alert(`Success! AI generated ${tasks.length} tasks. Check console for data.`);
+      toast.success(`Successfully generated ${tasks.length} tasks!`);
       
       setIsAiModalOpen(false);
     } catch (error) {
@@ -37,7 +39,7 @@ export default function ProjectsList() {
     }
   };
 
-  if (isLoading) return <div>Loading projects...</div>;
+  if (loading) return <div>Loading projects...</div>;
 
   return (
     <div className="space-y-6">

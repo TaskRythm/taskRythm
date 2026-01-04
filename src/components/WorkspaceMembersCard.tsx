@@ -7,6 +7,7 @@ import {
   type WorkspaceRole,
 } from "@/store/workspaceStore";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/contexts/ToastContext";
 import {
   fetchWorkspaceMembers,
   fetchWorkspaceInvites,
@@ -120,6 +121,7 @@ function getRoleColor(role: WorkspaceRole) {
 export function WorkspaceMembersCard() {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { callApi, user: currentUser } = useAuth();
+  const toast = useToast();
 
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -252,8 +254,11 @@ export function WorkspaceMembersCard() {
       setInviteEmail("");
       setInviteRole("MEMBER");
       setInviteOpen(false);
+      toast.success(`Invite sent to ${inviteEmail.trim()}`);
     }).catch((err: any) => {
-      setGlobalError(normalizeApiError(err));
+      const errorMsg = normalizeApiError(err);
+      setGlobalError(errorMsg);
+      toast.error(errorMsg || 'Failed to send invite');
     }).finally(() => {
       setInviteSaving(false);
     });
@@ -329,8 +334,12 @@ export function WorkspaceMembersCard() {
           );
           useWorkspaceStore.setState({ workspaces: updated_workspaces });
         }
+        
+        toast.success(`Role updated to ${role} successfully`);
       } catch (err: any) {
-        setGlobalError(normalizeApiError(err));
+        const errorMsg = normalizeApiError(err);
+        setGlobalError(errorMsg);
+        toast.error(errorMsg || 'Failed to update role');
       } finally {
         setRoleSavingId(null);
       }
@@ -365,8 +374,11 @@ export function WorkspaceMembersCard() {
         setGlobalError(null);
         await removeWorkspaceMember(callApi, activeWorkspaceId, memberId);
         setMembers((prev) => prev.filter((m) => m.id !== memberId));
+        toast.success(`${displayNameFromUser(member.user)} removed from workspace`);
       } catch (err: any) {
-        setGlobalError(normalizeApiError(err));
+        const errorMsg = normalizeApiError(err);
+        setGlobalError(errorMsg);
+        toast.error(errorMsg || 'Failed to remove member');
       } finally {
         setRemoveSavingId(null);
       }
@@ -393,14 +405,14 @@ export function WorkspaceMembersCard() {
       )}`;
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
-        alert("Invite link copied to clipboard");
+        toast.success("Invite link copied to clipboard!");
       } else {
         // fallback
         prompt("Copy this invite link:", url);
       }
     } catch (err) {
       console.error("Failed to copy invite link", err);
-      alert("Failed to copy link. Please copy manually.");
+      toast.error("Failed to copy link. Please copy manually.");
     }
   };
 

@@ -6,6 +6,7 @@ import { useWorkspaceStore } from "@/store/workspaceStore";
 import { useAuth } from "@/hooks/useAuth";
 import { deleteWorkspace } from "@/api/workspaces";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/contexts/ToastContext";
 
 function normalizeApiError(err: any): string {
   const raw = err?.message || String(err || "Unknown error");
@@ -32,6 +33,7 @@ export function WorkspaceSettings() {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { callApi } = useAuth();
   const router = useRouter();
+  const toast = useToast();
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +72,13 @@ export function WorkspaceSettings() {
           setIsDeleting(true);
           setError(null);
           await deleteWorkspace(callApi, activeWorkspaceId);
+          toast.success(`Workspace "${workspaceName}" deleted successfully`);
           // After deletion: redirect to home
           router.push("/");
         } catch (err: any) {
-          setError(normalizeApiError(err));
+          const errorMsg = normalizeApiError(err);
+          setError(errorMsg);
+          toast.error(errorMsg || 'Failed to delete workspace');
           setConfirmDialog(null);
         } finally {
           setIsDeleting(false);

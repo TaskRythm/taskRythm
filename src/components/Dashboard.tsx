@@ -19,6 +19,7 @@ import ProjectHealthModal from "./ProjectHealthModal";
 import { writeReleaseNotes } from "@/api/ai";
 import ReleaseNotesModal from "./ReleaseNotesModal";
 import ProjectChatModal from "./ProjectChatModal";
+import { useToast } from "@/contexts/ToastContext";
 
 // Imports for AI & API
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +44,7 @@ interface DashboardProps {
 
 export default function Dashboard({ user }: DashboardProps) {
   const { callApi, getAccessTokenSilently } = useAuth();
+  const toast = useToast();
 
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const {
@@ -180,7 +182,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const handleAiAccept = async (tasks: any[]) => {
     try {
       if (!selectedAiProjectId) {
-        alert("No project selected for AI tasks!");
+        toast.warning("No project selected for AI tasks!");
         return;
       }
       for (let i = 0; i < tasks.length; i++) {
@@ -196,13 +198,13 @@ export default function Dashboard({ user }: DashboardProps) {
         } as any);
         await new Promise(resolve => setTimeout(resolve, 300));
       }
-      alert(`Success! Added ${tasks.length} tasks to the project.`);
+      toast.success(`Successfully added ${tasks.length} tasks to the project!`);
       setShowAiModal(false);
       setSelectedAiProjectId(null);
       window.location.reload();
     } catch (error) {
       console.error("Failed to save AI tasks", error);
-      alert("Error saving tasks. Check console.");
+      toast.error("Error saving tasks. Please try again.");
     }
   };
 
@@ -272,7 +274,7 @@ export default function Dashboard({ user }: DashboardProps) {
       setChatModalOpen(true);
     } catch (error) {
       console.error("Failed to load context for chat", error);
-      alert("Could not load project tasks. Chat unavailable.");
+      toast.error("Could not load project tasks. Chat unavailable.");
     }
   };
 

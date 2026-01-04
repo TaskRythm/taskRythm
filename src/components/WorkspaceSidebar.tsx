@@ -5,10 +5,12 @@ import { useState } from 'react';
 import { Layers, Plus, Building2, X, Loader2, Check, Sparkles } from 'lucide-react';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { useWorkspaceStore } from '@/store/workspaceStore';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function WorkspaceSidebar() {
   const { workspaces, loading, creating, error, createWorkspace } = useWorkspaces();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspaceStore();
+  const toast = useToast();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -17,16 +19,24 @@ export default function WorkspaceSidebar() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      toast.warning('Please enter a workspace name');
+      return;
+    }
 
-    await createWorkspace({
-      name: newName.trim(),
-      description: newDesc.trim() || undefined,
-    });
+    try {
+      await createWorkspace({
+        name: newName.trim(),
+        description: newDesc.trim() || undefined,
+      });
 
-    setNewName('');
-    setNewDesc('');
-    setIsModalOpen(false);
+      toast.success(`Workspace "${newName.trim()}" created successfully!`);
+      setNewName('');
+      setNewDesc('');
+      setIsModalOpen(false);
+    } catch (error) {
+      toast.error('Failed to create workspace. Please try again.');
+    }
   };
 
   return (
