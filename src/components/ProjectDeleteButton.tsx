@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { useWorkspaceStore } from "@/store/workspaceStore";
 import { useAuth } from "@/hooks/useAuth";
 import { deleteProject } from "@/api/projects";
+import { useToast } from "@/contexts/ToastContext";
 
 function normalizeApiError(err: any): string {
   const raw = err?.message || String(err || "Unknown error");
@@ -40,6 +41,7 @@ export function ProjectDeleteButton({
 }: ProjectDeleteButtonProps) {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { callApi } = useAuth();
+  const toast = useToast();
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { refineTask } from "@/api/ai";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/contexts/ToastContext";
 import { Sparkles, Loader2, ArrowLeft, CheckCircle2, Clock, Calendar, Flag, Tag, Users, Plus, Trash2, AlertTriangle, Save, X, FilePlus, Hourglass } from "lucide-react";
 
 import {
@@ -78,6 +79,8 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
 };
 
 export default function ProjectPage() {
+  const { callApi } = useAuth();
+  const toast = useToast();
   const params = useParams() as { projectId: string };
   const router = useRouter();
   const projectId = params.projectId;
@@ -220,6 +223,7 @@ export default function ProjectPage() {
     } catch (err) {
       console.error("AI Refine Error:", err);
       setEditError("Failed to refine task. Please try again.");
+      toast.error("Failed to refine task");
     } finally {
       setIsRefining(false);
     }
@@ -227,9 +231,13 @@ export default function ProjectPage() {
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim()) {
+      toast.warning('Please enter a task title');
+      return;
+    }
 
     if (!canEditTasks) {
+      toast.error("You don't have permission to create tasks in this workspace.");
       setLocalError("You don't have permission to create tasks in this workspace.");
       return;
     }
@@ -240,11 +248,14 @@ export default function ProjectPage() {
         title: newTitle.trim(),
         description: newDesc.trim() || undefined,
       });
+      toast.success('Task created successfully!');
       setNewTitle("");
       setNewDesc("");
       setIsCreateModalOpen(false); // Close modal on success
     } catch (err: any) {
-      setLocalError(err.message || "Failed to create task");
+      const errorMsg = err.message || "Failed to create task";
+      setLocalError(errorMsg);
+      toast.error(errorMsg);
     }
   };
 
