@@ -5,17 +5,12 @@ import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { 
   LayoutGrid, 
-  KanbanSquare, 
   Settings, 
   MessageSquare, 
-  Folder, 
   Search, 
   Bell, 
   LogOut, 
-  User,
-  Plus,
-  ChevronDown,
-  Home
+  User
 } from 'lucide-react';
 
 export default function Navigation() {
@@ -38,7 +33,7 @@ export default function Navigation() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // --- Auth Handlers (Preserved from your code) ---
+  // --- Auth Handlers ---
   const handleLogin = () => {
     loginWithRedirect({
       authorizationParams: { redirect_uri: `${window.location.origin}/auth/callback` },
@@ -59,57 +54,79 @@ export default function Navigation() {
 
   // --- UI Components ---
 
-  const NavIcon = ({ href, icon: Icon, active, label }: { href: string; icon: any; active: boolean; label: string }) => (
-    <Link 
-      href={href}
-      title={label}
-      onMouseEnter={() => setHoveredIcon(label)}
-      onMouseLeave={() => setHoveredIcon(null)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '48px',
-        height: '48px',
-        borderRadius: '10px',
-        color: active ? '#fff' : '#64748b',
-        background: active ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
-        transition: 'all 0.3s ease',
-        marginBottom: '12px',
-        boxShadow: active ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none',
-        cursor: 'pointer',
-        position: 'relative',
-        border: 'none'
-      }}
-      onMouseMove={(e) => {
-        if (!active && hoveredIcon === label) {
-          (e.currentTarget as HTMLElement).style.background = 'rgba(102, 126, 234, 0.1)';
-        }
-      }}
-    >
-      <Icon size={24} strokeWidth={active ? 2.5 : 2} />
-      {hoveredIcon === label && !active && (
-        <div style={{
-          position: 'absolute',
-          left: '68px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          background: '#1e293b',
-          color: 'white',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '12px',
-          fontWeight: '500',
-          whiteSpace: 'nowrap',
-          zIndex: 1001,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          pointerEvents: 'none'
-        }}>
-          {label}
-        </div>
-      )}
-    </Link>
-  );
+  const NavIcon = ({ 
+    href, 
+    icon: Icon, 
+    active, 
+    label, 
+    customTooltip 
+  }: { 
+    href: string; 
+    icon: any; 
+    active: boolean; 
+    label: string;
+    customTooltip?: string;
+  }) => {
+    const isDisabled = !!customTooltip;
+
+    return (
+      <Link 
+        href={href}
+        onClick={(e) => {
+            if (isDisabled) e.preventDefault();
+        }}
+        title={isDisabled ? '' : label} // specific title handled by custom tooltip div
+        onMouseEnter={() => setHoveredIcon(label)}
+        onMouseLeave={() => setHoveredIcon(null)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '48px',
+          height: '48px',
+          borderRadius: '10px',
+          color: active ? '#fff' : (isDisabled ? '#94a3b8' : '#64748b'), // Lighter color for disabled
+          background: active ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+          transition: 'all 0.3s ease',
+          marginBottom: '12px',
+          boxShadow: active ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none',
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          position: 'relative',
+          border: 'none',
+          opacity: isDisabled ? 0.7 : 1
+        }}
+        onMouseMove={(e) => {
+          if (!active && hoveredIcon === label && !isDisabled) {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(102, 126, 234, 0.1)';
+          }
+        }}
+      >
+        <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+        
+        {/* Tooltip Logic */}
+        {hoveredIcon === label && !active && (
+          <div style={{
+            position: 'absolute',
+            left: '68px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: '#1e293b',
+            color: 'white',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            fontWeight: '500',
+            whiteSpace: 'nowrap',
+            zIndex: 1001,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            pointerEvents: 'none'
+          }}>
+            {customTooltip || label}
+          </div>
+        )}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -154,10 +171,24 @@ export default function Navigation() {
 
         {/* Navigation Items */}
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <NavIcon href="/" icon={LayoutGrid} active={pathname === '/'} label="Dashboard" />
-          <NavIcon href="/projects" icon={KanbanSquare} active={pathname.includes('/projects')} label="Projects" />
-          <NavIcon href="/messages" icon={MessageSquare} active={pathname.includes('/messages')} label="Messages" />
-          <NavIcon href="/files" icon={Folder} active={pathname.includes('/files')} label="Files" />
+          
+          {/* Dashboard (Active) */}
+          <NavIcon 
+            href="/" 
+            icon={LayoutGrid} 
+            active={pathname === '/'} 
+            label="Dashboard" 
+          />
+          
+          {/* Messages (Coming Soon) */}
+          <NavIcon 
+            href="#" 
+            icon={MessageSquare} 
+            active={false} 
+            label="Messages" 
+            customTooltip="Coming soon on the next update"
+          />
+
           <div style={{ marginTop: 'auto' }}>
             <NavIcon href="/settings" icon={Settings} active={pathname.includes('/settings')} label="Settings" />
           </div>
@@ -187,7 +218,7 @@ export default function Navigation() {
           <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input 
             type="text" 
-            placeholder="Search projects, tasks, or files..." 
+            placeholder="Search..." 
             style={{
               width: '100%',
               padding: '12px 16px 12px 44px',
@@ -434,9 +465,7 @@ export default function Navigation() {
         </div>
       </header>
 
-      {/* Main Content Padding Helper 
-          (Use this class in your Layout to push content away from bars) 
-      */}
+      {/* Main Content Padding Helper */}
       <style jsx global>{`
         main {
           margin-left: 90px;
@@ -445,7 +474,7 @@ export default function Navigation() {
         }
       `}</style>
 
-      {/* Logout Modal (Preserved) */}
+      {/* Logout Modal */}
       {showLogoutModal && (
         <div style={{
           position: 'fixed', 
@@ -481,7 +510,7 @@ export default function Navigation() {
               <LogOut size={32} color="#ef4444" />
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Log out?</h2>
-            <p style={{ color: '#64748b', marginBottom: '32px', fontSize: '14px', lineHeight: '1.6' }}>Are you sure you want to log out? You'll need to sign in again to access your projects.</p>
+            <p style={{ color: '#64748b', marginBottom: '32px', fontSize: '14px', lineHeight: '1.6' }}>Are you sure you want to log out? You'll need to sign in again to access your account.</p>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button 
                 onClick={() => setShowLogoutModal(false)} 
