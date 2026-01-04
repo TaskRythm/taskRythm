@@ -53,15 +53,24 @@ export class WorkspacesService {
 
     // 3) If still not found, create new
     if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          auth0Id,
-          email: email ? email.toLowerCase() : `${auth0Id}@placeholder.local`,
-          name: fallbackName,
-          picture,
-        },
-      });
-      return user;
+      try {
+        user = await this.prisma.user.create({
+          data: {
+            auth0Id,
+            email: email ? email.toLowerCase() : `${auth0Id}@placeholder.local`,
+            name: fallbackName,
+            picture,
+          },
+        });
+        return user;
+      } catch (error) {
+        // Handle race condition - user was created between our check and create
+        if (error.code === 'P2002') {
+          user = await this.prisma.user.findUnique({ where: { auth0Id } });
+          if (user) return user;
+        }
+        throw error;
+      }
     }
 
     // 4) Update fields if needed (keep stable identity)
