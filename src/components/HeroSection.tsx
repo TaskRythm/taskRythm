@@ -1,8 +1,10 @@
 'use client';
 import { useAuth0 } from '@auth0/auth0-react';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function HeroSection() {
   const { loginWithRedirect } = useAuth0();
+  const toast = useToast();
 
   const handleFreeTrial = () => {
     loginWithRedirect({
@@ -18,7 +20,7 @@ export default function HeroSection() {
 
   const handleWatchDemo = () => {
     // You can implement demo video logic here
-    alert('Demo video would play here');
+    toast.info('Demo video would play here');
   };
 
   return (
