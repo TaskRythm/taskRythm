@@ -13,6 +13,10 @@ body {
   background-color: #ffffff;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -22,33 +26,35 @@ body {
 /* Button Styles */
 .btn {
   padding: 12px 24px;
-  border-radius: 4px;
+  border-radius: 8px;
   font-weight: 500;
   text-decoration: none;
   display: inline-block;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   border: none;
-  cursor: pointer;
+  cursor: 'pointer';
   font-size: 14px;
 }
 
 .btn-primary {
-  background: #0052cc;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .btn-primary:hover {
-  background: #0041a8;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
 }
 
 .btn-secondary {
   background: transparent;
-  color: #0052cc;
-  border: 2px solid #0052cc;
+  color: #667eea;
+  border: 2px solid #667eea;
 }
 
 .btn-secondary:hover {
-  background: #f4f5f7;
+  background: #f0f4ff;
 }
 
 .btn-success {
@@ -58,4 +64,127 @@ body {
 
 .btn-success:hover {
   background: #006644;
+  transform: translateY(-2px);
+}
+
+/* Navigation Enhancements */
+nav a {
+  transition: all 0.3s ease;
+}
+
+/* Hover effects for interactive elements */
+button {
+  transition: all 0.3s ease;
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Professional focus styles */
+:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Code block styling */
+code {
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+}
+
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+/* Link styles */
+a {
+  color: #667eea;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #764ba2;
 }

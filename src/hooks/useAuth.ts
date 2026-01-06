@@ -1,31 +1,73 @@
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth0 } from "@auth0/auth0-react";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export const useAuth = () => {
-  const { 
-    user, 
-    isAuthenticated, 
-    isLoading, 
-    loginWithRedirect, 
+  const {
+    user,
+    isAuthenticated,
+    isLoading,
+    loginWithRedirect,
     logout,
-    getAccessTokenSilently 
+    getAccessTokenSilently,
   } = useAuth0();
 
-  const callApi = async (endpoint: string) => {
+  // Generic authenticated API helper
+  const callApi = async (endpoint: string, options: RequestInit = {}) => {
     const token = await getAccessTokenSilently();
-    const response = await fetch(`http://localhost:4000/${endpoint}`, {
+
+    const url = endpoint.startsWith("http")
+      ? endpoint
+      : `${API_BASE}/${endpoint.replace(/^\//, "")}`;
+
+    const response = await fetch(url, {
+      ...options,
+      cache: "no-store", 
       headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
         Authorization: `Bearer ${token}`,
       },
     });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(
+        `API ${response.status} ${response.statusText}${
+          text ? ` – ${text}` : ""
+        }`,
+      );
+    }
+
+    if (response.status === 204) return null;
+
     return response.json();
   };
+
+  const login = () =>
+    loginWithRedirect({
+      authorizationParams: {
+        redirect_uri: `${window.location.origin}/auth/callback`,
+      },
+      appState: {
+        returnTo: "/",
+      },
+    });
+
+  const logoutFn = () =>
+    logout({
+      logoutParams: {
+        returnTo: window.location.origin,
+      },
+    });
 
   return {
     user,
     isAuthenticated,
     isLoading,
-    login: () => loginWithRedirect(),
-    logout: () => logout({ returnTo: window.location.origin }),
+    login,
+    logout: logoutFn,
     callApi,
+    getAccessTokenSilently,
   };
 };

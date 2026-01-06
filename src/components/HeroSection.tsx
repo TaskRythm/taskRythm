@@ -1,13 +1,15 @@
 'use client';
 import { useAuth0 } from '@auth0/auth0-react';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function HeroSection() {
   const { loginWithRedirect } = useAuth0();
+  const toast = useToast();
 
   const handleFreeTrial = () => {
     loginWithRedirect({
       authorizationParams: {
-        redirect_uri: 'http://localhost:3000/api/auth/callback',
+        redirect_uri: `${window.location.origin}/auth/callback`,
         screen_hint: 'signup'
       },
       appState: {
@@ -18,7 +20,7 @@ export default function HeroSection() {
 
   const handleWatchDemo = () => {
     // You can implement demo video logic here
-    alert('Demo video would play here');
+    toast.info('Demo video would play here');
   };
 
   return (

@@ -7,7 +7,7 @@ export default function LoginButton() {
   const handleLogin = () => {
     loginWithRedirect({
       authorizationParams: {
-        redirect_uri: 'http://localhost:3000/api/auth/callback'
+        redirect_uri: `${window.location.origin}/auth/callback`
       },
       appState: {
         returnTo: '/'
