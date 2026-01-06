@@ -1,4 +1,16 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsUUID, IsInt, Min, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsDateString,
+  IsUUID,
+  IsInt,
+  Min,
+  IsNotEmpty,
+  IsArray,
+  ArrayMaxSize,
+  ArrayUnique,
+} from 'class-validator';
 import { TaskPriority, TaskStatus, TaskType  } from '@prisma/client';
 
 export class CreateTaskDto {
@@ -28,9 +40,12 @@ export class CreateTaskDto {
   @IsDateString()
   dueDate?: string;
 
-  @IsOptional()    
-  @IsUUID()
-  assignedToId?: string;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  assigneeIds?: string[];
 
   @IsOptional()
   @IsInt()

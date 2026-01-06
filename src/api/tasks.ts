@@ -13,6 +13,13 @@ export interface Subtask {
   updatedAt: string;
 }
 
+export interface TaskAssignee {
+  id: string;
+  name?: string | null;
+  email: string;
+  picture?: string | null;
+}
+
 export interface Task {
   id: string;
   projectId: string;
@@ -28,6 +35,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   subtasks?: Subtask[];
+  assignees?: TaskAssignee[];
 }
 
 type CallApiFn = (endpoint: string, options?: RequestInit) => Promise<any>;
@@ -58,6 +66,7 @@ export async function createTask(
     estimateMinutes?: number;
     type?: TaskType;
     parentTaskId?: string;
+    assigneeIds?: string[];
   },
 ): Promise<Task> {
   const res = await callApi("tasks", {
@@ -80,6 +89,7 @@ export async function updateTask(
     estimateMinutes: number | null;
     type: TaskType | null;           // allow null
     parentTaskId: string | null;
+    assigneeIds: string[];
   }>,
 ): Promise<Task> {
   const res = await callApi(`tasks/${id}`, {

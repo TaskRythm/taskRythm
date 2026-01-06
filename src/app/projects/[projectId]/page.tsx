@@ -1,7 +1,8 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { SetStateAction } from "react";
 
 import { refineTask } from "@/api/ai";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,6 +17,10 @@ import {
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { useProjects } from "@/hooks/useProjects";
 import { useTasks } from "@/hooks/useTasks";
+import {
+  fetchWorkspaceMembers,
+  type WorkspaceMember,
+} from "@/api/workspaceMembers";
 
 import type {
   Task,
@@ -78,6 +83,14 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
   DONE: "#10b981",
 };
 
+function initialsFromName(name?: string | null, email?: string) {
+  const source = name || email || "";
+  if (!source) return "?";
+  const parts = source.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return source.slice(0, 2).toUpperCase();
+}
+
 export default function ProjectPage() {
   const { callApi } = useAuth();
   const toast = useToast();
@@ -108,8 +121,16 @@ export default function ProjectPage() {
 
   // 👇 State for Create Modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createModalTab, setCreateModalTab] = useState<"basic" | "details" | "assign">("basic");
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [newStatus, setNewStatus] = useState<TaskStatus>("TODO");
+  const [newPriority, setNewPriority] = useState<TaskPriority>("MEDIUM");
+  const [newDueDate, setNewDueDate] = useState<string>("");
+  const [newHours, setNewHours] = useState<string>("");
+  const [newMinutes, setNewMinutes] = useState<string>("");
+  const [newType, setNewType] = useState<TaskType>("TASK");
+  const [newParentTaskId, setNewParentTaskId] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -128,6 +149,33 @@ export default function ProjectPage() {
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
+
+  const [editAssigneeIds, setEditAssigneeIds] = useState<string[]>([]);
+  const [newAssigneeIds, setNewAssigneeIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+
+    const loadMembers = async () => {
+      try {
+        setMembersLoading(true);
+        setMembersError(null);
+        const data = await fetchWorkspaceMembers(callApi, activeWorkspaceId);
+        setWorkspaceMembers(Array.isArray(data) ? data : []);
+      } catch (err: any) {
+        console.error(err);
+        setMembersError(err.message || "Failed to load workspace members");
+      } finally {
+        setMembersLoading(false);
+      }
+    };
+
+    loadMembers();
+  }, [activeWorkspaceId, callApi]);
 
   const currentWorkspaceMembership = useMemo(
     () => workspaces.find((w) => w.workspaceId === activeWorkspaceId) ?? null,
@@ -244,13 +292,42 @@ export default function ProjectPage() {
 
     try {
       setLocalError(null);
+
+      let totalMinutes: number | null = null;
+      const hoursRaw = newHours.trim();
+      const minutesRaw = newMinutes.trim();
+      if (hoursRaw !== "" || minutesRaw !== "") {
+        const h = hoursRaw === "" ? 0 : Number(hoursRaw);
+        const m = minutesRaw === "" ? 0 : Number(minutesRaw);
+        if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || m < 0 || m > 59) {
+          setLocalError("Estimate must be valid (hours ≥ 0, minutes 0–59).");
+          return;
+        }
+        totalMinutes = h * 60 + m;
+      }
+
       await createTask({
         title: newTitle.trim(),
         description: newDesc.trim() || undefined,
+        status: newStatus,
+        priority: newPriority,
+        dueDate: newDueDate || undefined,
+        estimateMinutes: totalMinutes,
+        type: newType,
+        parentTaskId: newParentTaskId || undefined,
+        assigneeIds: newAssigneeIds,
       });
       toast.success('Task created successfully!');
       setNewTitle("");
       setNewDesc("");
+      setNewStatus("TODO");
+      setNewPriority("MEDIUM");
+      setNewDueDate("");
+      setNewHours("");
+      setNewMinutes("");
+      setNewType("TASK");
+      setNewParentTaskId(null);
+      setNewAssigneeIds([]);
       setIsCreateModalOpen(false); // Close modal on success
     } catch (err: any) {
       const errorMsg = err.message || "Failed to create task";
@@ -307,6 +384,31 @@ export default function ProjectPage() {
     tasksByStatus[t.status].push(t);
   });
 
+  const toggleAssigneeSelection = useCallback(
+    (userId: string, setter: (value: SetStateAction<string[]>) => void) => {
+      setter((prev) => {
+        const exists = prev.includes(userId);
+        if (exists) return prev.filter((id) => id !== userId);
+        if (prev.length >= 5) {
+          toast.warning("You can assign up to 5 people.");
+          return prev;
+        }
+        return [...prev, userId];
+      });
+    },
+    [toast],
+  );
+
+  const toggleEditAssignee = useCallback(
+    (userId: string) => toggleAssigneeSelection(userId, setEditAssigneeIds),
+    [toggleAssigneeSelection],
+  );
+
+  const toggleNewAssignee = useCallback(
+    (userId: string) => toggleAssigneeSelection(userId, setNewAssigneeIds),
+    [toggleAssigneeSelection],
+  );
+
   const columns: { key: TaskStatus; title: string; accent: string; bgColor: string }[] = [
     { key: "TODO", title: "To Do", accent: "#f1f5f9", bgColor: "#f8fafc" },
     { key: "IN_PROGRESS", title: "In Progress", accent: "#dbeafe", bgColor: "#eff6ff" },
@@ -349,6 +451,7 @@ export default function ProjectPage() {
     setNewSubtaskTitle("");
     setEditError(null);
     setEditParentTaskId(task.parentTaskId ?? null);
+    setEditAssigneeIds((task.assignees ?? []).map((a) => a.id));
   };
 
   const handleCloseTaskModal = () => {
@@ -366,6 +469,7 @@ export default function ProjectPage() {
     setNewSubtaskTitle("");
     setEditError(null);
     setEditParentTaskId(null);
+    setEditAssigneeIds([]);
   };
 
   const handleSaveTask = async (e: React.FormEvent) => {
@@ -410,6 +514,7 @@ export default function ProjectPage() {
         estimateMinutes: totalMinutes,
         type: editType,
         parentTaskId: parentTaskIdPayload,
+        assigneeIds: editAssigneeIds,
       });
 
       if (typeof reloadTasks === "function") {
@@ -697,7 +802,16 @@ export default function ProjectPage() {
                     onClick={() => {
                       setNewTitle("");
                       setNewDesc("");
+                      setNewStatus("TODO");
+                      setNewPriority("MEDIUM");
+                      setNewDueDate("");
+                      setNewHours("");
+                      setNewMinutes("");
+                      setNewType("TASK");
+                      setNewParentTaskId(null);
+                      setNewAssigneeIds([]);
                       setLocalError(null);
+                      setCreateModalTab("basic");
                       setIsCreateModalOpen(true);
                     }}
                     style={{
@@ -1017,6 +1131,55 @@ export default function ProjectPage() {
                                     </div>
                                   )}
                                 </div>
+
+                                {(() => {
+                                  const taskAssignees = task.assignees ?? [];
+                                  return taskAssignees.length > 0 ? (
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: "6px",
+                                      flexWrap: "wrap",
+                                      marginTop: "4px",
+                                    }}
+                                  >
+                                    {taskAssignees.slice(0, 5).map((assignee) => (
+                                      <div
+                                        key={assignee.id}
+                                        style={{
+                                          width: 28,
+                                          height: 28,
+                                          borderRadius: "50%",
+                                          overflow: "hidden",
+                                          border: "1px solid #e2e8f0",
+                                          background: "#e2e8f0",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                        }}
+                                      >
+                                        {assignee.picture ? (
+                                          <img
+                                            src={assignee.picture}
+                                            alt={assignee.name || assignee.email}
+                                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                          />
+                                        ) : (
+                                          <span
+                                            style={{
+                                              fontSize: "11px",
+                                              fontWeight: 700,
+                                              color: "#475569",
+                                            }}
+                                          >
+                                            {initialsFromName(assignee.name, assignee.email)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                  ) : null;
+                                })()}
 
                                 {/* Movement buttons */}
                                 <div
@@ -1393,6 +1556,89 @@ export default function ProjectPage() {
                  </select>
                </div>
 
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>Assignees (max 5)</label>
+                    {membersLoading && <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 600 }}>Loading…</span>}
+                  </div>
+                  {membersError && (
+                    <div style={{ fontSize: "12px", color: "#ef4444", marginBottom: "8px", fontWeight: 600 }}>
+                      {membersError}
+                    </div>
+                  )}
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    {workspaceMembers.map((member) => {
+                      const selected = editAssigneeIds.includes(member.user.id);
+                      return (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={() => toggleEditAssignee(member.user.id)}
+                          disabled={isReadOnly || tasksSaving}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            padding: "10px 12px",
+                            borderRadius: "10px",
+                            border: selected ? "2px solid #10b981" : "2px solid #e2e8f0",
+                            background: selected ? "#ecfdf3" : "#f8fafc",
+                            cursor: isReadOnly || tasksSaving ? "not-allowed" : "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: "50%",
+                              overflow: "hidden",
+                              border: "1px solid #e2e8f0",
+                              background: "white",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {member.user.picture ? (
+                              <img
+                                src={member.user.picture}
+                                alt={member.user.name || member.user.email}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : (
+                              <span style={{ fontSize: "12px", fontWeight: 700, color: "#475569" }}>
+                                {initialsFromName(member.user.name, member.user.email)}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ flex: 1, textAlign: "left" }}>
+                            <div style={{ fontSize: "13px", fontWeight: 700, color: "#1e293b" }}>
+                              {member.user.name || member.user.email}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#94a3b8" }}>{member.role}</div>
+                          </div>
+                          <div
+                            style={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: 4,
+                              border: selected ? "2px solid #10b981" : "2px solid #cbd5e1",
+                              background: selected ? "#10b981" : "white",
+                            }}
+                          />
+                        </button>
+                      );
+                    })}
+
+                    {workspaceMembers.length === 0 && !membersLoading && (
+                      <div style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 600 }}>
+                        No members yet. Invite teammates to assign tasks.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                {/* Subtasks Section */}
                <div style={{ paddingTop: "16px", borderTop: "2px solid #f1f5f9" }}>
                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Subtasks</div>
@@ -1422,7 +1668,7 @@ export default function ProjectPage() {
         </div>
       )}
 
-      {/* 👇 NEW: Create Task Modal */}
+      {/* 👇 NEW: Create Task Modal - Tabbed */}
       {isCreateModalOpen && (
         <div 
           style={{ 
@@ -1440,51 +1686,273 @@ export default function ProjectPage() {
             if (e.target === e.currentTarget && !tasksSaving) setIsCreateModalOpen(false);
           }}
         >
-          <div style={{ background: "white", padding: "32px", borderRadius: "20px", width: "100%", maxWidth: "500px", boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)", animation: "slideUp 0.3s ease" }}>
-            <div style={{ marginBottom: "24px" }}>
+          <div style={{ background: "white", borderRadius: "20px", width: "100%", maxWidth: "600px", boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)", animation: "slideUp 0.3s ease", display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" }}>
+            {/* Header */}
+            <div style={{ padding: "24px 32px", borderBottom: "1px solid #e2e8f0" }}>
               <h2 style={{ fontSize: "24px", fontWeight: 800, color: "#1e293b", marginBottom: "8px", letterSpacing: "-0.4px" }}>Add New Task</h2>
               <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Create a new task for your team.</p>
             </div>
 
+            {/* Error Message */}
             {(localError) && (
-              <div style={{ fontSize: "13px", color: "#ef4444", marginBottom: "16px", background: "#fef2f2", padding: "12px 16px", borderRadius: "10px", border: "1px solid #fecaca", fontWeight: 600 }}>
+              <div style={{ fontSize: "13px", color: "#ef4444", background: "#fef2f2", padding: "12px 32px", border: "1px solid #fecaca", fontWeight: 600 }}>
                 {localError}
               </div>
             )}
 
-            <div style={{ display: "grid", gap: "16px" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Title *</label>
-                <input 
-                  type="text" 
-                  placeholder="Task title" 
-                  value={newTitle} 
-                  onChange={(e) => setNewTitle(e.target.value)} 
-                  onKeyPress={(e) => e.key === "Enter" && handleCreateTask(e)}
-                  style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 600, outline: "none", transition: "all 0.2s ease" }} 
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Description</label>
-                <textarea 
-                  placeholder="Optional description" 
-                  value={newDesc} 
-                  onChange={(e) => setNewDesc(e.target.value)} 
-                  rows={4} 
-                  style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 500, resize: "vertical", outline: "none", fontFamily: "inherit" }} 
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
-                />
-              </div>
-              
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
-                <button type="button" onClick={() => setIsCreateModalOpen(false)} disabled={tasksSaving} style={{ padding: "12px 24px", borderRadius: "12px", background: "white", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 700, color: "#64748b", cursor: "pointer" }}>Cancel</button>
-                <button type="button" onClick={handleCreateTask} disabled={tasksSaving || !newTitle.trim()} style={{ padding: "12px 28px", borderRadius: "12px", background: tasksSaving || !newTitle.trim() ? "#cbd5e1" : "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "white", border: "none", fontSize: "14px", fontWeight: 700, cursor: tasksSaving || !newTitle.trim() ? "not-allowed" : "pointer", boxShadow: tasksSaving || !newTitle.trim() ? "none" : "0 4px 16px rgba(16, 185, 129, 0.4)", display: "flex", alignItems: "center", gap: "8px" }}>
-                  {tasksSaving ? "Creating..." : <><Plus size={16} /> Create Task</>}
+            {/* Tabs */}
+            <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", padding: "0 32px" }}>
+              {(["basic", "details", "assign"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setCreateModalTab(tab)}
+                  style={{
+                    flex: 1,
+                    padding: "14px 16px",
+                    border: "none",
+                    background: "transparent",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    color: createModalTab === tab ? "#667eea" : "#94a3b8",
+                    borderBottom: createModalTab === tab ? "2px solid #667eea" : "none",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {tab === "basic" && "Basic Info"}
+                  {tab === "details" && "Details"}
+                  {tab === "assign" && "Assignments"}
                 </button>
-              </div>
+              ))}
+            </div>
+
+            {/* Content Area */}
+            <div style={{ flex: 1, overflow: "auto", padding: "24px 32px" }}>
+              {/* Basic Info Tab */}
+              {createModalTab === "basic" && (
+                <div style={{ display: "grid", gap: "16px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Title *</label>
+                    <input 
+                      type="text" 
+                      placeholder="Task title" 
+                      value={newTitle} 
+                      onChange={(e) => setNewTitle(e.target.value)} 
+                      onKeyPress={(e) => e.key === "Enter" && handleCreateTask(e)}
+                      style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 600, outline: "none", transition: "all 0.2s ease" }} 
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)"; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Description</label>
+                    <textarea 
+                      placeholder="Optional description" 
+                      value={newDesc} 
+                      onChange={(e) => setNewDesc(e.target.value)} 
+                      rows={6} 
+                      style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 500, resize: "vertical", outline: "none", fontFamily: "inherit" }} 
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)"; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.boxShadow = "none"; }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Details Tab */}
+              {createModalTab === "details" && (
+                <div style={{ display: "grid", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Status</label>
+                      <select 
+                        value={newStatus} 
+                        onChange={(e) => setNewStatus(e.target.value as TaskStatus)} 
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 600, outline: "none" }}
+                      >
+                        <option value="TODO">To Do</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="BLOCKED">Blocked</option>
+                        <option value="DONE">Done</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Priority</label>
+                      <select 
+                        value={newPriority} 
+                        onChange={(e) => setNewPriority(e.target.value as TaskPriority)} 
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 600, outline: "none" }}
+                      >
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Issue Type</label>
+                      <select 
+                        value={newType} 
+                        onChange={(e) => setNewType(e.target.value as TaskType)} 
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 600, outline: "none" }}
+                      >
+                        <option value="TASK">Task</option>
+                        <option value="BUG">Bug</option>
+                        <option value="FEATURE">Feature</option>
+                        <option value="IMPROVEMENT">Improvement</option>
+                        <option value="SPIKE">Spike</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Due Date</label>
+                      <input 
+                        type="date" 
+                        value={newDueDate} 
+                        onChange={(e) => setNewDueDate(e.target.value)} 
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 600, outline: "none" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Estimate (Hours / Minutes)</label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      <input 
+                        type="number" 
+                        placeholder="Hours" 
+                        value={newHours} 
+                        onChange={(e) => setNewHours(e.target.value)} 
+                        min="0" 
+                        style={{ padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 600, outline: "none" }}
+                      />
+                      <input 
+                        type="number" 
+                        placeholder="Minutes" 
+                        value={newMinutes} 
+                        onChange={(e) => setNewMinutes(e.target.value)} 
+                        min="0" 
+                        max="59" 
+                        style={{ padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 600, outline: "none" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Assignments Tab */}
+              {createModalTab === "assign" && (
+                <div style={{ display: "grid", gap: "16px" }}>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <label style={{ fontSize: "13px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px" }}>Assignees (max 5)</label>
+                      {membersLoading && <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 600 }}>Loading…</span>}
+                    </div>
+                    {membersError && (
+                      <div style={{ fontSize: "12px", color: "#ef4444", marginBottom: "8px", fontWeight: 600 }}>
+                        {membersError}
+                      </div>
+                    )}
+                    <div style={{ display: "grid", gap: "8px", maxHeight: "250px", overflowY: "auto" }}>
+                      {workspaceMembers.map((member) => {
+                        const selected = newAssigneeIds.includes(member.user.id);
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => toggleNewAssignee(member.user.id)}
+                            disabled={tasksSaving}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              padding: "10px 12px",
+                              borderRadius: "10px",
+                              border: selected ? "2px solid #0ea5e9" : "2px solid #e2e8f0",
+                              background: selected ? "#e0f2fe" : "#f8fafc",
+                              cursor: tasksSaving ? "not-allowed" : "pointer",
+                              transition: "all 0.15s ease",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: "50%",
+                                overflow: "hidden",
+                                border: "1px solid #e2e8f0",
+                                background: "white",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              {member.user.picture ? (
+                                <img
+                                  src={member.user.picture}
+                                  alt={member.user.name || member.user.email}
+                                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                />
+                              ) : (
+                                <span style={{ fontSize: "12px", fontWeight: 700, color: "#475569" }}>
+                                  {initialsFromName(member.user.name, member.user.email)}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ flex: 1, textAlign: "left" }}>
+                              <div style={{ fontSize: "13px", fontWeight: 700, color: "#1e293b" }}>
+                                {member.user.name || member.user.email}
+                              </div>
+                              <div style={{ fontSize: "12px", color: "#94a3b8" }}>{member.role}</div>
+                            </div>
+                            <div
+                              style={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: 4,
+                                border: selected ? "2px solid #0ea5e9" : "2px solid #cbd5e1",
+                                background: selected ? "#0ea5e9" : "white",
+                              }}
+                            />
+                          </button>
+                        );
+                      })}
+
+                      {workspaceMembers.length === 0 && !membersLoading && (
+                        <div style={{ fontSize: "12px", color: "#94a3b8", fontWeight: 600 }}>
+                          No members yet. Invite teammates to assign tasks.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Parent Task</label>
+                    <select 
+                      value={newParentTaskId || ""} 
+                      onChange={(e) => setNewParentTaskId(e.target.value || null)} 
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", fontWeight: 600, outline: "none" }}
+                    >
+                      <option value="">None (Top-level task)</option>
+                      {tasks?.filter(t => t.projectId === projectId && !t.parentTaskId).map(t => (
+                        <option key={t.id} value={t.id}>{t.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "16px 32px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: "12px", background: "#f8fafc" }}>
+              <button type="button" onClick={() => setIsCreateModalOpen(false)} disabled={tasksSaving} style={{ padding: "10px 20px", borderRadius: "10px", background: "white", border: "2px solid #e2e8f0", fontSize: "13px", fontWeight: 700, color: "#64748b", cursor: "pointer", transition: "all 0.2s ease" }} onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"} onMouseLeave={(e) => e.currentTarget.style.background = "white"}>Cancel</button>
+              <button type="button" onClick={handleCreateTask} disabled={tasksSaving || !newTitle.trim()} style={{ padding: "10px 24px", borderRadius: "10px", background: tasksSaving || !newTitle.trim() ? "#cbd5e1" : "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "white", border: "none", fontSize: "13px", fontWeight: 700, cursor: tasksSaving || !newTitle.trim() ? "not-allowed" : "pointer", boxShadow: tasksSaving || !newTitle.trim() ? "none" : "0 4px 16px rgba(16, 185, 129, 0.4)", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.2s ease" }}>
+                {tasksSaving ? "Creating..." : <><Plus size={16} /> Create Task</>}
+              </button>
             </div>
           </div>
         </div>

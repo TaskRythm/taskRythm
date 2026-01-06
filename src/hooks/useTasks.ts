@@ -13,6 +13,8 @@ import {
   deleteSubtask as apiDeleteSubtask,
   type Task,
   type TaskStatus,
+  type TaskPriority,
+  type TaskType,
 } from "@/api/tasks";
 
 export function useTasks(projectId?: string) {
@@ -53,7 +55,17 @@ export function useTasks(projectId?: string) {
   }, [reloadTasks]);
 
   const createTask = useCallback(
-    async (data: { title: string; description?: string }) => {
+    async (data: {
+      title: string;
+      description?: string;
+      status?: TaskStatus;
+      priority?: TaskPriority;
+      dueDate?: string;
+      estimateMinutes?: number | null;
+      type?: TaskType;
+      parentTaskId?: string;
+      assigneeIds?: string[];
+    }) => {
       if (!projectId) return;
       try {
         setSaving(true);
@@ -62,6 +74,13 @@ export function useTasks(projectId?: string) {
           projectId,
           title: data.title,
           description: data.description,
+          status: data.status,
+          priority: data.priority,
+          dueDate: data.dueDate,
+          estimateMinutes: data.estimateMinutes ?? undefined,
+          type: data.type,
+          parentTaskId: data.parentTaskId,
+          assigneeIds: data.assigneeIds,
         });
         setTasks((prev) => [...prev, task]);
       } catch (err: any) {
@@ -96,7 +115,7 @@ export function useTasks(projectId?: string) {
   );
 
   const updateTask = useCallback(
-    async (body: Partial<Task> & { id: string }) => {
+    async (body: Partial<Task> & { id: string; assigneeIds?: string[] }) => {
       try {
         setSaving(true);
         setError(null);
