@@ -81,7 +81,13 @@ function displayNameFromUser(user: { name?: string | null; email?: string | null
   if (!email) return "Member";
 
   if (email.endsWith("@placeholder.local")) {
-    return email.split("@")[0] || "Member";
+    // Extract a short ID from the placeholder email (e.g., "google-oauth2|123..." -> "google-123")
+    const prefix = email.split("@")[0] || "Member";
+    if (prefix.includes("|")) {
+      const [provider, id] = prefix.split("|");
+      return `${provider.replace("-oauth2", "")}-${id.slice(0, 6)}`;
+    }
+    return prefix;
   }
   return email;
 }
