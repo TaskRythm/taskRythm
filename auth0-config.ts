@@ -5,7 +5,7 @@ export const auth0Config = {
   authorizationParams: {
     redirect_uri: 'http://localhost:3000/auth/callback',
     audience: 'https://api.taskrythm.io',
-    scope: 'openid profile email read:projects',
+    scope: 'openid profile email read:projects offline_access',
   },
   cacheLocation: 'localstorage' as const,
 };

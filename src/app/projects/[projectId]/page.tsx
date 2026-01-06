@@ -36,6 +36,23 @@ function formatDate(dateString?: string | null) {
   return d.toLocaleDateString();
 }
 
+// Prefer real names, but fall back gracefully when email is placeholder
+function displayNameFromUserMinimal(user: { name?: string | null; email?: string | null }) {
+  const name = (user.name || "").trim();
+  const email = (user.email || "").trim();
+  if (name) return name;
+  if (!email) return "Member";
+  if (email.endsWith("@placeholder.local")) {
+    const prefix = email.split("@")[0] || "Member";
+    if (prefix.includes("|")) {
+      const [provider, id] = prefix.split("|");
+      return `${provider.replace("-oauth2", "")}-${id.slice(0, 6)}`;
+    }
+    return prefix;
+  }
+  return email;
+}
+
 function formatEstimateMinutes(minutes?: number | null): string {
   if (!minutes || minutes <= 0) return "";
   const hours = Math.floor(minutes / 60);
@@ -1612,9 +1629,9 @@ export default function ProjectPage() {
                               </span>
                             )}
                           </div>
-                          <div style={{ flex: 1, textAlign: "left" }}>
+                            <div style={{ flex: 1, textAlign: "left" }}>
                             <div style={{ fontSize: "13px", fontWeight: 700, color: "#1e293b" }}>
-                              {member.user.name || member.user.email}
+                              {displayNameFromUserMinimal(member.user)}
                             </div>
                             <div style={{ fontSize: "12px", color: "#94a3b8" }}>{member.role}</div>
                           </div>
@@ -1905,7 +1922,7 @@ export default function ProjectPage() {
                             </div>
                             <div style={{ flex: 1, textAlign: "left" }}>
                               <div style={{ fontSize: "13px", fontWeight: 700, color: "#1e293b" }}>
-                                {member.user.name || member.user.email}
+                                {displayNameFromUserMinimal(member.user)}
                               </div>
                               <div style={{ fontSize: "12px", color: "#94a3b8" }}>{member.role}</div>
                             </div>
