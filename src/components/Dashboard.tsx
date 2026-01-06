@@ -83,6 +83,7 @@ export default function Dashboard({ user }: DashboardProps) {
     activity = [], 
     loading: activityLoading,
     error: activityError,
+    reloadActivity,
   } = useWorkspaceActivity(); 
 
   // EFFECT: Fetch detailed stats for projects
@@ -174,6 +175,7 @@ export default function Dashboard({ user }: DashboardProps) {
         description: newProjectDescription.trim() || undefined,
       });
       handleCloseNewProject();
+      reloadActivity(); // Reload activity after creating project
     } catch (err: any) {
       setLocalError(err.message || "Failed to create project");
     }
@@ -201,7 +203,7 @@ export default function Dashboard({ user }: DashboardProps) {
       toast.success(`Successfully added ${tasks.length} tasks to the project!`);
       setShowAiModal(false);
       setSelectedAiProjectId(null);
-      window.location.reload();
+      reloadActivity(); // Reload activity instead of full page refresh
     } catch (error) {
       console.error("Failed to save AI tasks", error);
       toast.error("Error saving tasks. Please try again.");
@@ -551,7 +553,8 @@ export default function Dashboard({ user }: DashboardProps) {
                           projectId={project.id} 
                           projectName={project.name} 
                           onDeleted={() => { 
-                            setEnrichedProjects((prev) => prev.filter((p) => p.id !== project.id)); 
+                            setEnrichedProjects((prev) => prev.filter((p) => p.id !== project.id));
+                            reloadActivity(); // Reload activity after deleting project
                           }} 
                        />
                     </div>

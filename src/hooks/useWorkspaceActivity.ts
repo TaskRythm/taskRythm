@@ -33,6 +33,22 @@ export function useWorkspaceActivity() {
   useEffect(() => {
     if (isAuthenticated && activeWorkspaceId) {
       load();
+      
+      // Poll every 30 seconds for new activity
+      const interval = setInterval(() => {
+        load();
+      }, 30000);
+      
+      // Reload when window regains focus
+      const handleFocus = () => {
+        load();
+      };
+      window.addEventListener('focus', handleFocus);
+      
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('focus', handleFocus);
+      };
     } else {
       setActivity([]);
     }
