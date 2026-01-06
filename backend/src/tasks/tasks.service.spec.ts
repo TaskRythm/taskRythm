@@ -52,6 +52,21 @@ describe('TasksService', () => {
     },
   };
 
+  const mockAssignees = [
+    {
+      id: 'ta-1',
+      taskId: mockTaskId,
+      userId: mockUserId,
+      createdAt: new Date(),
+      user: {
+        id: mockUserId,
+        email: mockUser.email,
+        name: mockUser.name,
+        picture: mockUser.picture,
+      },
+    },
+  ];
+
   const mockTask = {
     id: mockTaskId,
     title: 'Test Task',
@@ -61,7 +76,6 @@ describe('TasksService', () => {
     type: TaskType.TASK,
     projectId: mockProjectId,
     createdById: mockUserId,
-    assignedToId: null,
     parentTaskId: null,
     orderIndex: 0,
     estimateMinutes: null,
@@ -69,6 +83,7 @@ describe('TasksService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     subtasks: [],
+    assignees: mockAssignees,
   };
 
   const mockSubtask = {
@@ -99,6 +114,10 @@ describe('TasksService', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    taskAssignee: {
+      createMany: jest.fn(),
       deleteMany: jest.fn(),
     },
     subtask: {
@@ -164,7 +183,10 @@ describe('TasksService', () => {
       expect(mockPrismaService.task.findMany).toHaveBeenCalledWith({
         where: { projectId: mockProjectId },
         orderBy: { createdAt: 'asc' },
-        include: { subtasks: true },
+        include: {
+          subtasks: true,
+          assignees: { include: { user: { select: { id: true, name: true, email: true, picture: true } } } },
+        },
       });
     });
 
@@ -214,6 +236,9 @@ describe('TasksService', () => {
       mockPrismaService.task.create.mockResolvedValue({
         ...mockTask,
         ...createDto,
+      });
+      mockPrismaService.task.findUnique.mockResolvedValue({
+        ...mockTask,
       });
 
       const result = await service.create(mockUser as any, createDto);
@@ -305,7 +330,6 @@ describe('TasksService', () => {
           title: updateDto.title,
           status: updateDto.status,
         }),
-        include: { subtasks: true },
       });
     });
 
@@ -318,40 +342,25 @@ describe('TasksService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should handle assignment updates', async () => {
+    it('should handle assignment updates (assigneeIds)', async () => {
       const assignDto: UpdateTaskDto = {
-        assignedToId: 'new-assignee-id',
+        assigneeIds: [mockUserId],
       };
 
       mockWorkspacesService.ensureUser.mockResolvedValue(mockDbUser);
       mockPrismaService.task.findUnique.mockResolvedValue(mockTask);
       mockPrismaService.project.findUnique.mockResolvedValue(mockProject);
-      mockPrismaService.task.update.mockResolvedValue({
+      mockPrismaService.task.update.mockResolvedValue(mockTask);
+      mockPrismaService.taskAssignee.deleteMany.mockResolvedValue({ count: 0 });
+      mockPrismaService.taskAssignee.createMany.mockResolvedValue({ count: 1 });
+      mockPrismaService.task.findUnique.mockResolvedValue({
         ...mockTask,
-        assignedToId: assignDto.assignedToId,
+        assignees: mockAssignees,
       });
 
       const result = await service.update(mockUser as any, mockTaskId, assignDto);
 
-      expect(result.assignedToId).toBe(assignDto.assignedToId);
-    });
-
-    it('should handle unassignment (setting assignedToId to null)', async () => {
-      const unassignDto: UpdateTaskDto = {
-        assignedToId: null,
-      };
-
-      mockWorkspacesService.ensureUser.mockResolvedValue(mockDbUser);
-      mockPrismaService.task.findUnique.mockResolvedValue(mockTask);
-      mockPrismaService.project.findUnique.mockResolvedValue(mockProject);
-      mockPrismaService.task.update.mockResolvedValue({
-        ...mockTask,
-        assignedToId: null,
-      });
-
-      const result = await service.update(mockUser as any, mockTaskId, unassignDto);
-
-      expect(result.assignedToId).toBeNull();
+      expect(result.assignees?.length).toBeGreaterThanOrEqual(1);
     });
   });
 

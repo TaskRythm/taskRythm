@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -11,6 +12,13 @@ import { UpdateSubtaskDto } from './dto/update-subtask.dto';
 import type { AuthUser } from '../auth/auth-user.interface';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { Prisma } from '@prisma/client';
+
+const ASSIGNEE_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  picture: true,
+} as const;
 
 @Injectable()
 export class TasksService {
@@ -64,20 +72,69 @@ export class TasksService {
     return task;
   }
 
+  private mapTaskAssignees<T extends { assignees?: any[] }>(task: T) {
+    return {
+      ...task,
+      assignees: task.assignees?.map((a: any) => a.user) ?? [],
+    } as T;
+  }
+
+  private async assertAssigneesAreWorkspaceMembers(
+    projectId: string,
+    assigneeUserIds: string[],
+  ) {
+    if (assigneeUserIds.length > 5) {
+      throw new BadRequestException('A task can have at most 5 assignees');
+    }
+
+    const uniqueIds = [...new Set(assigneeUserIds)];
+
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { workspaceId: true },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+
+    const members = await this.prisma.workspaceMember.findMany({
+      where: { workspaceId: project.workspaceId, userId: { in: uniqueIds } },
+      select: { userId: true },
+    });
+
+    const memberIds = new Set(members.map((m) => m.userId));
+    const missing = uniqueIds.filter((id) => !memberIds.has(id));
+
+    if (missing.length > 0) {
+      throw new ForbiddenException('All assignees must be members of this workspace');
+    }
+  }
+
   async findByProject(user: AuthUser, projectId: string) {
     const userId = await this.getOrCreateUserId(user);
     await this.ensureProjectMembership(projectId, userId);
 
-    return this.prisma.task.findMany({
+    const tasks = await this.prisma.task.findMany({
       where: { projectId },
       orderBy: { createdAt: 'asc' },
-      include: { subtasks: true },
+      include: {
+        subtasks: true,
+        assignees: {
+          include: {
+            user: { select: ASSIGNEE_SELECT },
+          },
+        },
+      },
     });
+
+    return tasks.map((task) => this.mapTaskAssignees(task));
   }
 
   async create(user: AuthUser, dto: CreateTaskDto) {
     const userId = await this.getOrCreateUserId(user);
     await this.ensureProjectMembership(dto.projectId, userId);
+    const assigneeIds = dto.assigneeIds ? [...new Set(dto.assigneeIds)] : [];
+    if (assigneeIds.length > 0) {
+      await this.assertAssigneesAreWorkspaceMembers(dto.projectId, assigneeIds);
+    }
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Safe orderIndex (prevents collisions)
@@ -105,27 +162,56 @@ export class TasksService {
 
         project: { connect: { id: dto.projectId } },
         createdBy: { connect: { id: userId } },
-
-        assignedTo: dto.assignedToId
-          ? { connect: { id: dto.assignedToId } }
-          : undefined,
-
-        // ✅ FIX: parent relation, not parentTaskId
         parentTask: dto.parentTaskId
           ? { connect: { id: dto.parentTaskId } }
           : undefined,
       };
 
-      return tx.task.create({
+      const task = await tx.task.create({
         data,
-        include: { subtasks: true },
       });
+
+      if (assigneeIds.length > 0) {
+        await tx.taskAssignee.createMany({
+          data: assigneeIds.map((assigneeId) => ({
+            taskId: task.id,
+            userId: assigneeId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      const created = await tx.task.findUniqueOrThrow({
+        where: { id: task.id },
+        include: {
+          subtasks: true,
+          assignees: {
+            include: { user: { select: ASSIGNEE_SELECT } },
+          },
+        },
+      });
+
+      return this.mapTaskAssignees(created);
     });
   }
 
   async update(user: AuthUser, taskId: string, dto: UpdateTaskDto) {
     const userId = await this.getOrCreateUserId(user);
     const existing = await this.ensureTaskMembership(taskId, userId);
+
+    const assigneeIdsRaw = dto.assigneeIds;
+    const assigneeIds = Array.isArray(assigneeIdsRaw)
+      ? [...new Set(assigneeIdsRaw)]
+      : assigneeIdsRaw === undefined
+        ? undefined
+        : [];
+
+    if (assigneeIds !== undefined) {
+      await this.assertAssigneesAreWorkspaceMembers(
+        existing.projectId,
+        assigneeIds,
+      );
+    }
 
     const data: Prisma.TaskUpdateInput = {};
 
@@ -142,12 +228,6 @@ export class TasksService {
       data.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
     }
 
-    if (dto.assignedToId !== undefined) {
-      data.assignedTo = dto.assignedToId
-        ? { connect: { id: dto.assignedToId } }
-        : { disconnect: true };
-    }
-
     // ✅ FIX: parent relation update
     if (dto.parentTaskId !== undefined) {
       data.parentTask = dto.parentTaskId
@@ -155,10 +235,44 @@ export class TasksService {
         : { disconnect: true };
     }
 
-    return this.prisma.task.update({
-      where: { id: existing.id },
-      data,
-      include: { subtasks: true },
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.task.update({
+        where: { id: existing.id },
+        data,
+      });
+
+      if (assigneeIds !== undefined) {
+        await tx.taskAssignee.deleteMany({
+          where: {
+            taskId: existing.id,
+            ...(assigneeIds.length > 0
+              ? { userId: { notIn: assigneeIds } }
+              : {}),
+          },
+        });
+
+        if (assigneeIds.length > 0) {
+          await tx.taskAssignee.createMany({
+            data: assigneeIds.map((assigneeId) => ({
+              taskId: existing.id,
+              userId: assigneeId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      const updated = await tx.task.findUniqueOrThrow({
+        where: { id: existing.id },
+        include: {
+          subtasks: true,
+          assignees: {
+            include: { user: { select: ASSIGNEE_SELECT } },
+          },
+        },
+      });
+
+      return this.mapTaskAssignees(updated);
     });
   }
 
