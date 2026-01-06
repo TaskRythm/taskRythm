@@ -144,10 +144,13 @@ export class TasksService {
         select: { orderIndex: true },
       });
 
+      const maxOrderIndex = last?.orderIndex ?? -1;
+      
+      // If orderIndex is provided, add it to the max to avoid collisions
       const nextOrderIndex =
         typeof dto.orderIndex === 'number'
-          ? dto.orderIndex
-          : (last?.orderIndex ?? -1) + 1;
+          ? maxOrderIndex + 1 + dto.orderIndex
+          : maxOrderIndex + 1;
 
       const data: Prisma.TaskCreateInput = {
         title: dto.title,
@@ -188,6 +191,19 @@ export class TasksService {
           assignees: {
             include: { user: { select: ASSIGNEE_SELECT } },
           },
+          project: { select: { workspaceId: true } },
+        },
+      });
+
+      // Log activity
+      await tx.activityLog.create({
+        data: {
+          workspaceId: (created.project as any).workspaceId,
+          projectId: created.projectId,
+          taskId: created.id,
+          userId,
+          type: 'TASK_CREATED',
+          message: `Created task "${created.title}"`,
         },
       });
 
@@ -269,8 +285,39 @@ export class TasksService {
           assignees: {
             include: { user: { select: ASSIGNEE_SELECT } },
           },
+          project: { select: { workspaceId: true } },
         },
       });
+
+      // Log activity
+      const oldTask = await tx.task.findUnique({
+        where: { id: existing.id },
+        select: { status: true },
+      });
+      
+      if (dto.status && oldTask && oldTask.status !== dto.status) {
+        await tx.activityLog.create({
+          data: {
+            workspaceId: (updated.project as any).workspaceId,
+            projectId: updated.projectId,
+            taskId: updated.id,
+            userId,
+            type: 'TASK_STATUS_CHANGED',
+            message: `Changed task "${updated.title}" from ${oldTask.status} to ${dto.status}`,
+          },
+        });
+      } else {
+        await tx.activityLog.create({
+          data: {
+            workspaceId: (updated.project as any).workspaceId,
+            projectId: updated.projectId,
+            taskId: updated.id,
+            userId,
+            type: 'TASK_UPDATED',
+            message: `Updated task "${updated.title}"`,
+          },
+        });
+      }
 
       return this.mapTaskAssignees(updated);
     });

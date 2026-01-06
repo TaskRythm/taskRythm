@@ -76,13 +76,28 @@ export class ProjectsService {
   async createForWorkspace(dto: CreateProjectDto, userId: string) {
     await this.assertWorkspaceMembership(dto.workspaceId, userId);
 
-    return this.prisma.project.create({
-      data: {
-        workspaceId: dto.workspaceId,
-        name: dto.name,
-        description: dto.description,
-        archived: dto.archived ?? false,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const project = await tx.project.create({
+        data: {
+          workspaceId: dto.workspaceId,
+          name: dto.name,
+          description: dto.description,
+          archived: dto.archived ?? false,
+        },
+      });
+
+      // Log activity
+      await tx.activityLog.create({
+        data: {
+          workspaceId: dto.workspaceId,
+          projectId: project.id,
+          userId,
+          type: 'PROJECT_CREATED',
+          message: `Created project "${project.name}"`,
+        },
+      });
+
+      return project;
     });
   }
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Trash2, AlertTriangle, Shield } from "lucide-react";
 import { useWorkspaceStore } from "@/store/workspaceStore";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { deleteWorkspace } from "@/api/workspaces";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/contexts/ToastContext";
@@ -30,8 +31,9 @@ function normalizeApiError(err: any): string {
 }
 
 export function WorkspaceSettings() {
-  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
+  const { workspaces, activeWorkspaceId, setActiveWorkspace } = useWorkspaceStore();
   const { callApi } = useAuth();
+  const { reload: reloadWorkspaces } = useWorkspaces();
   const router = useRouter();
   const toast = useToast();
 
@@ -72,7 +74,15 @@ export function WorkspaceSettings() {
           setIsDeleting(true);
           setError(null);
           await deleteWorkspace(callApi, activeWorkspaceId);
+          
+          // Clear active workspace before reload
+          setActiveWorkspace(null);
+          
+          // Reload workspaces - this will auto-select first workspace if any exist
+          await reloadWorkspaces();
+          
           toast.success(`Workspace "${workspaceName}" deleted successfully`);
+          
           // After deletion: redirect to home
           router.push("/");
         } catch (err: any) {
