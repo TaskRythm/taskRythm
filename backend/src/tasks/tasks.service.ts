@@ -144,10 +144,13 @@ export class TasksService {
         select: { orderIndex: true },
       });
 
+      const maxOrderIndex = last?.orderIndex ?? -1;
+      
+      // If orderIndex is provided, add it to the max to avoid collisions
       const nextOrderIndex =
         typeof dto.orderIndex === 'number'
-          ? dto.orderIndex
-          : (last?.orderIndex ?? -1) + 1;
+          ? maxOrderIndex + 1 + dto.orderIndex
+          : maxOrderIndex + 1;
 
       const data: Prisma.TaskCreateInput = {
         title: dto.title,
