@@ -30,3 +30,14 @@ export async function deleteWorkspace(
     method: "DELETE",
   });
 }
+
+export async function updateWorkspace(
+  callApi: (endpoint: string, options?: RequestInit) => Promise<any>,
+  workspaceId: string,
+  data: { name?: string; description?: string }
+) {
+  return callApi(`workspaces/${workspaceId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}

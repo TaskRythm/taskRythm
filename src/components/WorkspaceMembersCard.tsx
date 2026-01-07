@@ -925,7 +925,7 @@ export function WorkspaceMembersCard() {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "10px",
+                gap: "12px",
               }}
             >
               {invites.map((inv) => {
@@ -935,53 +935,51 @@ export function WorkspaceMembersCard() {
                     key={inv.id}
                     style={{
                       display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "14px 16px",
-                      borderRadius: "12px",
-                      background: "linear-gradient(135deg, #fef9c3 0%, #fef3c7 100%)",
-                      border: "2px dashed #fde68a",
+                      flexDirection: "column",
+                      gap: "10px",
+                      padding: "16px",
+                      borderRadius: "14px",
+                      background: "#fff7ed",
+                      border: "1px solid #fde68a",
+                      boxShadow: "0 2px 8px rgba(234, 179, 8, 0.12)",
                       transition: "all 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(234, 179, 8, 0.2)";
+                      e.currentTarget.style.boxShadow = "0 4px 14px rgba(234, 179, 8, 0.2)";
+                      e.currentTarget.style.transform = "translateY(-1px)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = "none";
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(234, 179, 8, 0.12)";
+                      e.currentTarget.style.transform = "translateY(0)";
                     }}
                   >
+                    {/* Top row: email + copy link */}
                     <div
                       style={{
                         display: "flex",
-                        flexDirection: "column",
-                        gap: "6px",
-                        flex: 1,
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "12px",
                         minWidth: 0,
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
                         <div
                           style={{
-                            width: "32px",
-                            height: "32px",
+                            width: "34px",
+                            height: "34px",
                             borderRadius: "8px",
                             background: "white",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+                            flexShrink: 0,
                           }}
                         >
                           <Mail size={16} color="#ca8a04" />
                         </div>
-                        <span
+                        <div
                           style={{
                             fontSize: "14px",
                             color: "#92400e",
@@ -992,73 +990,81 @@ export function WorkspaceMembersCard() {
                           }}
                         >
                           {inv.email}
-                        </span>
+                        </div>
                       </div>
-                      <div
+                      <button
+                        type="button"
+                        onClick={() => handleCopyInviteLink(inv)}
                         style={{
-                          fontSize: "12px",
-                          color: "#a16207",
                           display: "flex",
                           alignItems: "center",
                           gap: "8px",
-                          flexWrap: "wrap",
-                          paddingLeft: "40px",
+                          padding: "10px 14px",
+                          fontSize: "12px",
+                          borderRadius: "999px",
+                          border: "none",
+                          background: "white",
+                          color: "#b45309",
+                          cursor: "pointer",
+                          fontWeight: 700,
+                          boxShadow: "0 2px 8px rgba(180, 83, 9, 0.18)",
+                          transition: "all 0.2s ease",
+                          flexShrink: 0,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-2px)";
+                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(180, 83, 9, 0.28)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.boxShadow = "0 2px 8px rgba(180, 83, 9, 0.18)";
                         }}
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            padding: "4px 8px",
-                            background: roleColors.bg,
-                            color: roleColors.color,
-                            borderRadius: "6px",
-                            fontWeight: 700,
-                            fontSize: "11px",
-                            border: `1px solid ${roleColors.border}`,
-                          }}
-                        >
-                          {getRoleIcon(inv.role)}
-                          {inv.role.toLowerCase()}
-                        </div>
-                        <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                          <Calendar size={12} />
-                          Expires {formatDate(inv.expiresAt)}
-                        </span>
-                      </div>
+                        <LinkIcon size={14} />
+                        Copy link
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyInviteLink(inv)}
+
+                    {/* Bottom row: role + expiry */}
+                    <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "6px",
-                        padding: "10px 14px",
-                        fontSize: "12px",
-                        borderRadius: "10px",
-                        border: "none",
-                        background: "white",
-                        color: "#ca8a04",
-                        cursor: "pointer",
-                        fontWeight: 700,
-                        boxShadow: "0 2px 8px rgba(202, 138, 4, 0.2)",
-                        transition: "all 0.2s ease",
-                        flexShrink: 0,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-2px)";
-                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(202, 138, 4, 0.3)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 2px 8px rgba(202, 138, 4, 0.2)";
+                        gap: "10px",
+                        flexWrap: "wrap",
+                        paddingLeft: "46px",
                       }}
                     >
-                      <LinkIcon size={14} />
-                      Copy link
-                    </button>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "4px 10px",
+                          background: roleColors.bg,
+                          color: roleColors.color,
+                          borderRadius: "999px",
+                          fontWeight: 700,
+                          fontSize: "11px",
+                          border: `1px solid ${roleColors.border}`,
+                        }}
+                      >
+                        {getRoleIcon(inv.role)}
+                        {inv.role.toLowerCase()}
+                      </div>
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          color: "#a16207",
+                          fontSize: "12px",
+                        }}
+                      >
+                        <Calendar size={12} />
+                        Expires {formatDate(inv.expiresAt)}
+                      </span>
+                    </div>
                   </div>
                 );
               })}

@@ -7,7 +7,7 @@ import type { SetStateAction } from "react";
 import { refineTask } from "@/api/ai";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/contexts/ToastContext";
-import { Sparkles, Loader2, ArrowLeft, CheckCircle2, Clock, Calendar, Flag, Tag, Users, Plus, Trash2, AlertTriangle, Save, X, FilePlus, Hourglass, HeartPulse, FileText, MessageSquare, HelpCircle } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft, CheckCircle2, Clock, Calendar, Flag, Tag, Users, Plus, Trash2, AlertTriangle, Save, X, FilePlus, Hourglass, HeartPulse, FileText, MessageSquare, HelpCircle, Edit2 } from "lucide-react";
 
 import ProjectHealthModal from "@/components/ProjectHealthModal";
 import ReleaseNotesModal from "@/components/ReleaseNotesModal";
@@ -125,7 +125,7 @@ export default function ProjectPage() {
   useWorkspaces();
 
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
-  const { projects, loading: projectsLoading } = useProjects();
+  const { projects, loading: projectsLoading, updateProject } = useProjects();
 
   const {
     tasks,
@@ -209,10 +209,16 @@ export default function ProjectPage() {
   const currentRole: WorkspaceRole | null =
     currentWorkspaceMembership?.role ?? null;
 
+  const canRenameProject = currentRole !== null && currentRole !== "VIEWER";
+
   const project = useMemo(
     () => projects.find((p: any) => p.id === projectId),
     [projects, projectId],
   );
+
+  const [renameMode, setRenameMode] = useState(false);
+  const [renameValue, setRenameValue] = useState(project?.name || "");
+  const [renameSaving, setRenameSaving] = useState(false);
 
   const workspaceName = useMemo(() => {
     const ws =
@@ -226,6 +232,10 @@ export default function ProjectPage() {
       console.warn("Project not found, redirecting to /");
     }
   }, [projectsLoading, project]);
+
+  useEffect(() => {
+    setRenameValue(project?.name || "");
+  }, [project?.name]);
 
   const [isRefining, setIsRefining] = useState(false);
   const { getAccessTokenSilently } = useAuth();
@@ -310,6 +320,25 @@ export default function ProjectPage() {
       toast.error("Failed to refine task");
     } finally {
       setIsRefining(false);
+    }
+  };
+
+  const handleProjectRename = async () => {
+    if (!project || !renameValue.trim()) {
+      setRenameMode(false);
+      return;
+    }
+
+    try {
+      setRenameSaving(true);
+      await updateProject(project.id, { name: renameValue.trim() });
+      setRenameMode(false);
+      toast.success("Project renamed");
+    } catch (err: any) {
+      console.error("Rename project error", err);
+      toast.error(err?.message || "Failed to rename project");
+    } finally {
+      setRenameSaving(false);
     }
   };
 
@@ -801,17 +830,132 @@ export default function ProjectPage() {
           </button>
           
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <h1
-              style={{
-                fontSize: "32px",
-                fontWeight: 800,
-                color: "white",
-                marginBottom: "8px",
-                letterSpacing: "-0.5px",
-              }}
-            >
-              {project?.name || "Project"}
-            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "4px" }}>
+              {renameMode ? (
+                <>
+                  <input
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: "10px",
+                      border: "1px solid rgba(255, 255, 255, 0.35)",
+                      background: "rgba(255, 255, 255, 0.18)",
+                      color: "white",
+                      minWidth: "220px",
+                      fontSize: "16px",
+                      fontWeight: 700,
+                      outline: "none",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                    }}
+                    placeholder="Project name"
+                    autoFocus
+                    onFocus={(e) => {
+                      e.currentTarget.style.border = "1px solid rgba(255,255,255,0.6)";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.25)";
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.25)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.border = "1px solid rgba(255, 255, 255, 0.35)";
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.18)";
+                    }}
+                  />
+                  <button
+                    onClick={handleProjectRename}
+                    disabled={renameSaving || !renameValue.trim()}
+                    style={{
+                      border: "none",
+                      background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                      color: "white",
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                      cursor: renameSaving || !renameValue.trim() ? "not-allowed" : "pointer",
+                      opacity: renameSaving || !renameValue.trim() ? 0.7 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      boxShadow: "0 6px 16px rgba(22, 163, 74, 0.35)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(22, 163, 74, 0.45)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 6px 16px rgba(22, 163, 74, 0.35)";
+                    }}
+                  >
+                    <Save size={16} /> {renameSaving ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setRenameMode(false);
+                      setRenameValue(project?.name || "");
+                    }}
+                    disabled={renameSaving}
+                    style={{
+                      border: "1px solid rgba(255, 255, 255, 0.55)",
+                      background: "rgba(255, 255, 255, 0.12)",
+                      color: "white",
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                      cursor: renameSaving ? "not-allowed" : "pointer",
+                      opacity: renameSaving ? 0.7 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.12)";
+                    }}
+                  >
+                    <X size={16} /> Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h1
+                    style={{
+                      fontSize: "32px",
+                      fontWeight: 800,
+                      color: "white",
+                      margin: 0,
+                      letterSpacing: "-0.5px",
+                    }}
+                  >
+                    {project?.name || "Project"}
+                  </h1>
+                  {canRenameProject && (
+                    <button
+                      onClick={() => {
+                        setRenameValue(project?.name || "");
+                        setRenameMode(true);
+                      }}
+                      style={{
+                        border: "none",
+                        background: "rgba(255, 255, 255, 0.15)",
+                        color: "white",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <Edit2 size={16} /> Rename
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
             <p
               style={{
                 fontSize: "14px",
