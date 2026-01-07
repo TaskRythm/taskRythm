@@ -69,11 +69,11 @@ export default function WorkspaceSidebar() {
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.25)',
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
               }}
             >
               <Layers size={18} color="white" strokeWidth={2.5} />
@@ -103,19 +103,19 @@ export default function WorkspaceSidebar() {
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: '#667eea',
+              color: '#3B82F6',
               transition: 'all 0.2s ease',
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#667eea';
+              e.currentTarget.style.background = '#3B82F6';
               e.currentTarget.style.color = 'white';
               e.currentTarget.style.transform = 'scale(1.05)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'white';
-              e.currentTarget.style.color = '#667eea';
+              e.currentTarget.style.color = '#3B82F6';
               e.currentTarget.style.transform = 'scale(1)';
               e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
             }}
@@ -144,7 +144,7 @@ export default function WorkspaceSidebar() {
                 margin: '0 auto 12px',
                 borderRadius: '50%',
                 border: '3px solid #f1f5f9',
-                borderTopColor: '#667eea',
+                borderTopColor: '#3B82F6',
                 animation: 'spin 1s linear infinite',
               }}
             />
@@ -217,7 +217,7 @@ export default function WorkspaceSidebar() {
                     padding: '12px 14px',
                     borderRadius: '10px',
                     background: isActive ? '#f0f0ff' : isHovered ? '#fafbfc' : 'white',
-                    border: isActive ? '2px solid #667eea' : '1px solid #e2e8f0',
+                    border: isActive ? '2px solid #3B82F6' : '1px solid #e2e8f0',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     display: 'flex',
@@ -235,7 +235,7 @@ export default function WorkspaceSidebar() {
                         transform: 'translateY(-50%)',
                         width: '3px',
                         height: '60%',
-                        background: 'linear-gradient(180deg, #667eea 0%, #764ba2 100%)',
+                        background: 'linear-gradient(180deg, #3B82F6 0%, #2563EB 100%)',
                         borderRadius: '0 3px 3px 0',
                       }}
                     />
@@ -248,7 +248,7 @@ export default function WorkspaceSidebar() {
                         height: '32px',
                         borderRadius: '8px',
                         background: isActive
-                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          ? 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)'
                           : '#f8fafc',
                         display: 'flex',
                         alignItems: 'center',
@@ -268,7 +268,7 @@ export default function WorkspaceSidebar() {
                         style={{
                           fontSize: '13px',
                           fontWeight: 700,
-                          color: isActive ? '#667eea' : '#1e293b',
+                          color: isActive ? '#3B82F6' : '#1e293b',
                           marginBottom: '2px',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -294,7 +294,7 @@ export default function WorkspaceSidebar() {
                   {isActive && (
                     <Check
                       size={16}
-                      color="#667eea"
+                      color="#3B82F6"
                       strokeWidth={3}
                       style={{
                         flexShrink: 0,
@@ -395,8 +395,8 @@ export default function WorkspaceSidebar() {
                     transition: 'all 0.2s ease',
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#667eea';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                    e.currentTarget.style.borderColor = '#3B82F6';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = '#e2e8f0';
@@ -438,8 +438,8 @@ export default function WorkspaceSidebar() {
                     transition: 'all 0.2s ease',
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#667eea';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                    e.currentTarget.style.borderColor = '#3B82F6';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = '#e2e8f0';
@@ -491,7 +491,7 @@ export default function WorkspaceSidebar() {
                     background:
                       creating || !newName.trim()
                         ? '#cbd5e1'
-                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        : 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
                     fontWeight: 700,
                     fontSize: '14px',
                     color: 'white',

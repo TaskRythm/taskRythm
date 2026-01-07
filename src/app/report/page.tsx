@@ -27,7 +27,7 @@ export default function ReportPage() {
         <div style={{
           width: '80px',
           height: '80px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
           borderRadius: '20px',
           display: 'flex',
           alignItems: 'center',
@@ -59,7 +59,7 @@ export default function ReportPage() {
         
         <div style={{
           padding: '12px 24px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
           color: 'white',
           borderRadius: '10px',
           fontWeight: '600',
@@ -77,7 +77,7 @@ export default function ReportPage() {
             width: '100%',
             padding: '14px',
             background: '#f1f5f9',
-            color: '#667eea',
+            color: '#3B82F6',
             border: 'none',
             borderRadius: '10px',
             fontSize: '16px',

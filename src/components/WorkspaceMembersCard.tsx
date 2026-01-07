@@ -673,7 +673,7 @@ export function WorkspaceMembersCard() {
                         width: 44,
                         height: 44,
                         borderRadius: "12px",
-                        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",

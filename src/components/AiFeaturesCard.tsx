@@ -67,11 +67,11 @@ export default function AiFeaturesCard({
               width: "36px",
               height: "36px",
               borderRadius: "8px",
-              background: "linear-gradient(135deg, #7c3aed 0%, #667eea 100%)",
+              background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)",
+              boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
             }}
           >
             <Sparkles size={18} color="white" />

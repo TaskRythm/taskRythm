@@ -328,7 +328,8 @@ export class TasksService {
     const task = await this.ensureTaskMembership(taskId, userId);
 
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.subtask.deleteMany({ where: { taskId: task.id } });
+     await tx.subtask.deleteMany({ where: { taskId: task.id } });
+      await tx.taskAssignee.deleteMany({ where: { taskId: task.id } });
       await tx.task.delete({ where: { id: task.id } });
     });
   }

@@ -88,10 +88,10 @@ export default function Navigation() {
           height: '48px',
           borderRadius: '10px',
           color: active ? '#fff' : (isDisabled ? '#94a3b8' : '#64748b'), // Lighter color for disabled
-          background: active ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+          background: active ? 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)' : 'transparent',
           transition: 'all 0.3s ease',
           marginBottom: '12px',
-          boxShadow: active ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none',
+          boxShadow: active ? '0 4px 12px rgba(59, 130, 246, 0.4)' : 'none',
           cursor: isDisabled ? 'not-allowed' : 'pointer',
           position: 'relative',
           border: 'none',
@@ -444,13 +444,13 @@ export default function Navigation() {
                   padding: '10px 22px', 
                   borderRadius: '8px', 
                   border: 'none', 
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                  background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)', 
                   fontWeight: '600', 
                   color: 'white', 
                   cursor: 'pointer',
                   fontSize: '14px',
                   transition: 'all 0.3s ease',
-                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
