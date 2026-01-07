@@ -936,7 +936,7 @@ export function WorkspaceMembersCard() {
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: "10px",
+                      gap: "8px",
                       padding: "16px",
                       borderRadius: "14px",
                       background: "#fff7ed",
@@ -953,44 +953,65 @@ export function WorkspaceMembersCard() {
                       e.currentTarget.style.transform = "translateY(0)";
                     }}
                   >
-                    {/* Top row: email + copy link */}
+                    {/* Line 1: email */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                      <div
+                        style={{
+                          width: "34px",
+                          height: "34px",
+                          borderRadius: "8px",
+                          background: "white",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Mail size={16} color="#ca8a04" />
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "14px",
+                          color: "#92400e",
+                          fontWeight: 700,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {inv.email}
+                      </div>
+                    </div>
+
+                    {/* Line 2: role + copy link on one line */}
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "12px",
-                        minWidth: 0,
+                        justifyContent: "flex-start",
+                        gap: "10px",
+                        paddingLeft: "44px",
+                        flexWrap: "wrap",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-                        <div
-                          style={{
-                            width: "34px",
-                            height: "34px",
-                            borderRadius: "8px",
-                            background: "white",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Mail size={16} color="#ca8a04" />
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "14px",
-                            color: "#92400e",
-                            fontWeight: 700,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {inv.email}
-                        </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "6px 12px",
+                          background: roleColors.bg,
+                          color: roleColors.color,
+                          borderRadius: "999px",
+                          fontWeight: 700,
+                          fontSize: "11px",
+                          border: `1px solid ${roleColors.border}`,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {getRoleIcon(inv.role)}
+                        {inv.role.toLowerCase()}
                       </div>
                       <button
                         type="button"
@@ -998,72 +1019,48 @@ export function WorkspaceMembersCard() {
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "8px",
-                          padding: "10px 14px",
+                          gap: "6px",
+                          padding: "8px 12px",
                           fontSize: "12px",
                           borderRadius: "999px",
-                          border: "none",
-                          background: "white",
+                          border: "1px solid #f5e3c3",
+                          background: "#fff7ed",
                           color: "#b45309",
                           cursor: "pointer",
                           fontWeight: 700,
-                          boxShadow: "0 2px 8px rgba(180, 83, 9, 0.18)",
-                          transition: "all 0.2s ease",
-                          flexShrink: 0,
+                          boxShadow: "0 2px 6px rgba(180, 83, 9, 0.15)",
+                          transition: "all 0.15s ease",
+                          flexShrink: 1,
+                          whiteSpace: "nowrap",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "translateY(-2px)";
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(180, 83, 9, 0.28)";
+                          e.currentTarget.style.transform = "translateY(-1px)";
+                          e.currentTarget.style.boxShadow = "0 4px 10px rgba(180, 83, 9, 0.22)";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.transform = "translateY(0)";
-                          e.currentTarget.style.boxShadow = "0 2px 8px rgba(180, 83, 9, 0.18)";
+                          e.currentTarget.style.boxShadow = "0 2px 6px rgba(180, 83, 9, 0.15)";
                         }}
+                        title="Copy invite link"
                       >
                         <LinkIcon size={14} />
                         Copy link
                       </button>
                     </div>
 
-                    {/* Bottom row: role + expiry */}
+                    {/* Line 3: expiry */}
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "10px",
-                        flexWrap: "wrap",
-                        paddingLeft: "46px",
+                        gap: "6px",
+                        color: "#a16207",
+                        fontSize: "12px",
+                        paddingLeft: "44px",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          padding: "4px 10px",
-                          background: roleColors.bg,
-                          color: roleColors.color,
-                          borderRadius: "999px",
-                          fontWeight: 700,
-                          fontSize: "11px",
-                          border: `1px solid ${roleColors.border}`,
-                        }}
-                      >
-                        {getRoleIcon(inv.role)}
-                        {inv.role.toLowerCase()}
-                      </div>
-                      <span
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          color: "#a16207",
-                          fontSize: "12px",
-                        }}
-                      >
-                        <Calendar size={12} />
-                        Expires {formatDate(inv.expiresAt)}
-                      </span>
+                      <Calendar size={12} />
+                      Expires {formatDate(inv.expiresAt)}
                     </div>
                   </div>
                 );
