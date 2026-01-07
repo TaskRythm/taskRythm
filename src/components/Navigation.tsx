@@ -10,7 +10,9 @@ import {
   Search, 
   Bell, 
   LogOut, 
-  User
+  User,
+  Calendar,
+  FileText
 } from 'lucide-react';
 
 export default function Navigation() {
@@ -179,6 +181,31 @@ export default function Navigation() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
           {/* Action Icons */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <Link href="/messages" style={{ textDecoration: 'none' }}>
+              <button 
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  position: 'relative',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f1f5f9';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'none';
+                }}
+                title="Messages"
+              >
+                <MessageSquare size={20} color="#64748b" />
+              </button>
+            </Link>
             <button 
               style={{ 
                 background: 'none', 
@@ -198,28 +225,7 @@ export default function Navigation() {
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'none';
               }}
-            >
-              <MessageSquare size={20} color="#64748b" />
-            </button>
-            <button 
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                cursor: 'pointer', 
-                position: 'relative',
-                padding: '8px',
-                borderRadius: '8px',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#f1f5f9';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'none';
-              }}
+              title="Notifications"
             >
               <Bell size={20} color="#64748b" />
               <span style={{ 
@@ -234,6 +240,56 @@ export default function Navigation() {
                 boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
               }}></span>
             </button>
+            <Link href="/report" style={{ textDecoration: 'none' }}>
+              <button 
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  position: 'relative',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f1f5f9';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'none';
+                }}
+                title="Report"
+              >
+                <FileText size={20} color="#64748b" />
+              </button>
+            </Link>
+            <Link href="/calendar" style={{ textDecoration: 'none' }}>
+              <button 
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  position: 'relative',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f1f5f9';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'none';
+                }}
+                title="Calendar"
+              >
+                <Calendar size={20} color="#64748b" />
+              </button>
+            </Link>
           </div>
 
           {/* User Section */}
