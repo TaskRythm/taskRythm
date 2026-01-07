@@ -7,7 +7,14 @@ import type { SetStateAction } from "react";
 import { refineTask } from "@/api/ai";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/contexts/ToastContext";
-import { Sparkles, Loader2, ArrowLeft, CheckCircle2, Clock, Calendar, Flag, Tag, Users, Plus, Trash2, AlertTriangle, Save, X, FilePlus, Hourglass } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft, CheckCircle2, Clock, Calendar, Flag, Tag, Users, Plus, Trash2, AlertTriangle, Save, X, FilePlus, Hourglass, HeartPulse, FileText, MessageSquare, HelpCircle } from "lucide-react";
+
+import ProjectHealthModal from "@/components/ProjectHealthModal";
+import ReleaseNotesModal from "@/components/ReleaseNotesModal";
+import ProjectChatModal from "@/components/ProjectChatModal";
+import AiProjectModal from "@/components/AiProjectModal";
+
+import { analyzeProjectHealth, writeReleaseNotes } from "@/api/ai";
 
 import {
   useWorkspaceStore,
@@ -223,6 +230,18 @@ export default function ProjectPage() {
   const [isRefining, setIsRefining] = useState(false);
   const { getAccessTokenSilently } = useAuth();
 
+  // 👇 State for AI Modals
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [healthModalOpen, setHealthModalOpen] = useState(false);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthData, setHealthData] = useState<any>(null);
+  const [scribeModalOpen, setScribeModalOpen] = useState(false);
+  const [scribeLoading, setScribeLoading] = useState(false);
+  const [scribeContent, setScribeContent] = useState("");
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [chatContextTasks, setChatContextTasks] = useState<any[]>([]);
+  const [showAiInfoModal, setShowAiInfoModal] = useState(false);
+
   const projectStats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter((t) => t.status === "DONE").length;
@@ -292,6 +311,84 @@ export default function ProjectPage() {
     } finally {
       setIsRefining(false);
     }
+  };
+
+  // 👇 AI Features Handlers
+  const handleCheckHealth = async () => {
+    setHealthModalOpen(true);
+    setHealthLoading(true);
+    setHealthData(null);
+
+    try {
+      const token = await getAccessTokenSilently();
+      if (!token) throw new Error("No auth token");
+      const cleanTasks = tasks.map((t: any) => ({
+        title: t.title,
+        status: t.status,
+        priority: t.priority || "MEDIUM",
+        description: t.description || "",
+        tag: (Array.isArray(t.tags) && t.tags.length > 0) ? t.tags[0] : "General"
+      }));
+      const analysis = await analyzeProjectHealth(cleanTasks as any, token);
+      setHealthData(analysis);
+    } catch (error) {
+      console.error("Health Check Failed", error);
+      toast.error("Failed to analyze project health");
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
+  const handleScribe = async () => {
+    setScribeModalOpen(true);
+    setScribeLoading(true);
+    setScribeContent("");
+    try {
+      const token = await getAccessTokenSilently();
+      const cleanTasks = tasks.map((t: any) => ({
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        description: t.description || "",
+        tag: (Array.isArray(t.tags) && t.tags.length > 0) ? t.tags[0] : "General"
+      }));
+      const result = await writeReleaseNotes(cleanTasks, token);
+      const text = result.markdownContent || result.report || result.content || result.result || (typeof result === 'string' ? result : null);
+      if (text) {
+        setScribeContent(text);
+      } else {
+        setScribeContent("Failed to generate report. Please try again.");
+      }
+    } catch (error) {
+      console.error("Scribe Error", error);
+      setScribeContent("Failed to generate report. Please try again.");
+      toast.error("Failed to generate report");
+    } finally {
+      setScribeLoading(false);
+    }
+  };
+
+  const handleOpenChat = async () => {
+    setChatContextTasks([]); 
+    try {
+      const token = await getAccessTokenSilently();
+      const cleanTasks = tasks.map((t: any) => ({
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        description: t.description || "",
+        tag: (Array.isArray(t.tags) && t.tags.length > 0) ? t.tags[0] : "General"
+      }));
+      setChatContextTasks(cleanTasks);
+      setChatModalOpen(true);
+    } catch (error) {
+      console.error("Failed to load context for chat", error);
+      toast.error("Could not load project tasks. Chat unavailable.");
+    }
+  };
+
+  const openAiPlannerForProject = () => {
+    setShowAiModal(true);
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
@@ -709,77 +806,187 @@ export default function ProjectPage() {
       {/* Main content */}
       <div className="container" style={{ marginTop: "32px" }}>
         
-        {/* Dynamic Stats Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginBottom: "32px" }}>
-            
-            {/* Card 1: Task Completed */}
-            <div style={{ background: "white", borderRadius: "16px", padding: "24px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ background: "#f0fdf4", padding: "8px", borderRadius: "50%" }}>
-                    <CheckCircle2 size={20} color="#16a34a" />
-                  </div>
-                  <span style={{ fontSize: "15px", color: "#64748b", fontWeight: 600 }}>Task Completed</span>
-                </div>
-                <span style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a" }}>
-                  {String(projectStats.completed).padStart(2, '0')}
-                </span>
-              </div>
-              <div style={{ textAlign: "right", marginTop: "8px" }}>
-                 <span style={{ color: "#64748b", fontSize: "13px" }}>
-                   Out of <strong style={{ color: "#1e293b" }}>{projectStats.total}</strong> total tasks
-                 </span>
-              </div>
+        {/* AI Features Header with Info Button */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "12px",
+              background: "linear-gradient(135deg, #7c3aed 0%, #667eea 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)",
+            }}>
+              <Sparkles size={20} color="white" />
             </div>
+            <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#1e293b", margin: 0, letterSpacing: "-0.4px" }}>
+              AI Features
+            </h2>
+          </div>
+          <button
+            onClick={() => setShowAiInfoModal(true)}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "8px",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            title="Learn about AI Features"
+          >
+            <HelpCircle size={24} color="#7c3aed" />
+          </button>
+        </div>
+        
+        {/* AI Features Cards - Above Kanban Board */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "20px", marginBottom: "32px" }}>
+          
+          {/* Card 1: AI Architect */}
+          <button
+            onClick={() => openAiPlannerForProject()}
+            style={{
+              background: "white",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
+              border: "1px solid #e2e8f0",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              textAlign: "left",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#cbd5e1";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 24px rgba(0, 0, 0, 0.1)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <div style={{ background: "#f3e8ff", padding: "10px", borderRadius: "10px" }}>
+                <Sparkles size={20} color="#7c3aed" />
+              </div>
+              <span style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>AI Architect</span>
+            </div>
+            <p style={{ margin: 0, fontSize: "12px", color: "#94a3b8", lineHeight: "1.5" }}>Break down goals into tasks</p>
+          </button>
 
-            {/* Card 2: New Task */}
-            <div style={{ background: "white", borderRadius: "16px", padding: "24px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ background: "#eff6ff", padding: "8px", borderRadius: "50%" }}>
-                    <FilePlus size={20} color="#2563eb" />
-                  </div>
-                  <span style={{ fontSize: "15px", color: "#64748b", fontWeight: 600 }}>New Tasks</span>
-                </div>
-                <span style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a" }}>
-                  {String(projectStats.newRecent).padStart(2, '0')}
-                </span>
+          {/* Card 2: AI Doctor */}
+          <button
+            onClick={() => handleCheckHealth()}
+            style={{
+              background: "white",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
+              border: "1px solid #e2e8f0",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              textAlign: "left",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#cbd5e1";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 24px rgba(0, 0, 0, 0.1)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <div style={{ background: "#fce7f3", padding: "10px", borderRadius: "10px" }}>
+                <HeartPulse size={20} color="#db2777" />
               </div>
-              <div style={{ textAlign: "right", marginTop: "8px" }}>
-                 <span style={{ color: "#22c55e", fontSize: "13px", fontWeight: "600" }}>
-                   +{projectStats.newRecent} added
-                 </span>
-                 <span style={{ color: "#94a3b8", fontSize: "12px", marginLeft: "4px" }}>
-                   in last 7 days
-                 </span>
-              </div>
+              <span style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>AI Doctor</span>
             </div>
+            <p style={{ margin: 0, fontSize: "12px", color: "#94a3b8", lineHeight: "1.5" }}>Analyze project health</p>
+          </button>
 
-            {/* Card 3: Pending Tasks */}
-            <div style={{ background: "white", borderRadius: "16px", padding: "24px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ background: "#fff7ed", padding: "8px", borderRadius: "50%" }}>
-                    <Hourglass size={20} color="#ea580c" />
-                  </div>
-                  <span style={{ fontSize: "15px", color: "#64748b", fontWeight: 600 }}>Pending Tasks</span>
-                </div>
-                <span style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a" }}>
-                  {String(projectStats.pending).padStart(2, '0')}
-                </span>
+          {/* Card 3: The Scribe */}
+          <button
+            onClick={() => handleScribe()}
+            style={{
+              background: "white",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
+              border: "1px solid #e2e8f0",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              textAlign: "left",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#cbd5e1";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 24px rgba(0, 0, 0, 0.1)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <div style={{ background: "#dbeafe", padding: "10px", borderRadius: "10px" }}>
+                <FileText size={20} color="#2563eb" />
               </div>
-              <div style={{ textAlign: "right", marginTop: "8px" }}>
-                 <span style={{ color: "#64748b", fontSize: "13px" }}>
-                   Remaining active tasks
-                 </span>
-              </div>
+              <span style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>The Scribe</span>
             </div>
+            <p style={{ margin: 0, fontSize: "12px", color: "#94a3b8", lineHeight: "1.5" }}>Generate reports</p>
+          </button>
+
+          {/* Card 4: The Brain */}
+          <button
+            onClick={() => handleOpenChat()}
+            style={{
+              background: "white",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
+              border: "1px solid #e2e8f0",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              textAlign: "left",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#cbd5e1";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 24px rgba(0, 0, 0, 0.1)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0";
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)";
+              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <div style={{ background: "#f0fdf4", padding: "10px", borderRadius: "10px" }}>
+                <MessageSquare size={20} color="#16a34a" />
+              </div>
+              <span style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>The Brain</span>
+            </div>
+            <p style={{ margin: 0, fontSize: "12px", color: "#94a3b8", lineHeight: "1.5" }}>Chat with AI assistant</p>
+          </button>
+
         </div>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "3fr 1fr",
+            gridTemplateColumns: "1fr",
             gap: "28px",
             alignItems: "flex-start",
           }}
@@ -1400,65 +1607,7 @@ export default function ProjectPage() {
             )}
           </div>
 
-          {/* RIGHT: Enhanced Project Stats (Sidebar) */}
-          <div>
-            <div
-              style={{
-                background: "white",
-                border: "1px solid #e2e8f0",
-                borderRadius: "16px",
-                padding: "24px",
-                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.06)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-                <div style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "8px",
-                  background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
-                }}>
-                  <CheckCircle2 size={18} color="white" />
-                </div>
-                <h3
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 800,
-                    margin: 0,
-                    color: "#1e293b",
-                    letterSpacing: "-0.3px",
-                  }}
-                >
-                  Breakdown
-                </h3>
-              </div>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {/* Just keeping Status counts here as they are useful details */}
-                {STATUS_FLOW.map(status => (
-                    <div key={status} style={{
-                        padding: "12px 14px",
-                        background: "#f8fafc",
-                        borderRadius: "10px",
-                        border: "1px solid #e2e8f0",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center"
-                    }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLORS[status] }} />
-                            <span style={{ fontSize: "13px", fontWeight: 600, color: "#475569" }}>{status.replace("_", " ")}</span>
-                        </div>
-                        <span style={{ fontSize: "13px", fontWeight: 700, color: "#1e293b" }}>{tasksByStatus[status].length}</span>
-                    </div>
-                ))}
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
 
@@ -1991,6 +2140,193 @@ export default function ProjectPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
               <button type="button" onClick={() => setShowDeleteConfirm(false)} disabled={tasksSaving} style={{ padding: "12px 24px", fontSize: "14px", fontWeight: 700, borderRadius: "10px", border: "2px solid #e2e8f0", background: "white", color: "#64748b" }}>Cancel</button>
               <button type="button" onClick={handleDeleteTask} disabled={tasksSaving} style={{ padding: "12px 28px", fontSize: "14px", fontWeight: 700, borderRadius: "10px", border: "none", background: tasksSaving ? "#cbd5e1" : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", color: "white" }}>{tasksSaving ? "Deleting..." : "Delete"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Modals */}
+      <AiProjectModal isOpen={showAiModal} onClose={() => setShowAiModal(false)} onAccept={() => {}} />
+      <ProjectHealthModal isOpen={healthModalOpen} onClose={() => setHealthModalOpen(false)} projectName={project?.name || "Project"} data={healthData} loading={healthLoading} />
+      <ReleaseNotesModal isOpen={scribeModalOpen} onClose={() => setScribeModalOpen(false)} projectName={project?.name || "Project"} content={scribeContent} loading={scribeLoading} />
+      <ProjectChatModal isOpen={chatModalOpen} onClose={() => setChatModalOpen(false)} projectName={project?.name || "Project"} contextTasks={chatContextTasks} />
+
+      {/* AI Features Info Modal */}
+      {showAiInfoModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 200,
+          }}
+          onClick={() => setShowAiInfoModal(false)}
+        >
+          <div
+            style={{
+              background: "white",
+              padding: "40px",
+              borderRadius: "24px",
+              width: "100%",
+              maxWidth: "650px",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              position: "relative",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onScroll={(e) => {
+              const target = e.currentTarget as HTMLElement;
+              target.style.scrollbarWidth = "none";
+            }}
+          >
+            <button
+              onClick={() => setShowAiInfoModal(false)}
+              style={{
+                position: "absolute",
+                top: "20px",
+                right: "20px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "#64748b",
+                padding: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <X size={24} />
+            </button>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "32px" }}>
+              <div
+                style={{
+                  width: "50px",
+                  height: "50px",
+                  borderRadius: "12px",
+                  background: "linear-gradient(135deg, #7c3aed 0%, #667eea 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)",
+                }}
+              >
+                <Sparkles size={24} color="white" />
+              </div>
+              <h2 style={{ fontSize: "28px", fontWeight: 800, color: "#1e293b", margin: 0 }}>
+                AI Features Guide
+              </h2>
+            </div>
+
+            <p style={{ fontSize: "15px", color: "#64748b", lineHeight: "1.6", marginBottom: "32px" }}>
+              TaskRythm includes powerful AI tools to help you manage your projects more efficiently. Here's how to use each feature:
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+              {/* AI Architect */}
+              <div style={{ borderLeft: "4px solid #7c3aed", paddingLeft: "20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                  <div style={{ background: "#f3e8ff", padding: "10px", borderRadius: "10px" }}>
+                    <Sparkles size={20} color="#7c3aed" />
+                  </div>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#1e293b", margin: 0 }}>
+                    AI Architect
+                  </h3>
+                </div>
+                <p style={{ margin: 0, fontSize: "14px", color: "#64748b", lineHeight: "1.6" }}>
+                  <strong>What it does:</strong> Breaks down high-level project goals into actionable tasks and subtasks automatically.
+                </p>
+                <p style={{ margin: "8px 0 0 0", fontSize: "14px", color: "#64748b", lineHeight: "1.6" }}>
+                  <strong>How to use:</strong> Click the card and describe your project goal (e.g., "Build a mobile app"). AI Architect will create a detailed task breakdown for you to organize and assign.
+                </p>
+              </div>
+
+              {/* AI Doctor */}
+              <div style={{ borderLeft: "4px solid #db2777", paddingLeft: "20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                  <div style={{ background: "#fce7f3", padding: "10px", borderRadius: "10px" }}>
+                    <HeartPulse size={20} color="#db2777" />
+                  </div>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#1e293b", margin: 0 }}>
+                    AI Doctor
+                  </h3>
+                </div>
+                <p style={{ margin: 0, fontSize: "14px", color: "#64748b", lineHeight: "1.6" }}>
+                  <strong>What it does:</strong> Analyzes your project for stalled tasks, bottlenecks, risks, and suggests improvements.
+                </p>
+                <p style={{ margin: "8px 0 0 0", fontSize: "14px", color: "#64748b", lineHeight: "1.6" }}>
+                  <strong>How to use:</strong> Click the card to run a health check on your project. Get insights on what's blocking progress and recommendations to fix it.
+                </p>
+              </div>
+
+              {/* The Scribe */}
+              <div style={{ borderLeft: "4px solid #2563eb", paddingLeft: "20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                  <div style={{ background: "#dbeafe", padding: "10px", borderRadius: "10px" }}>
+                    <FileText size={20} color="#2563eb" />
+                  </div>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#1e293b", margin: 0 }}>
+                    The Scribe
+                  </h3>
+                </div>
+                <p style={{ margin: 0, fontSize: "14px", color: "#64748b", lineHeight: "1.6" }}>
+                  <strong>What it does:</strong> Generates professional status reports, release notes, and client updates based on your completed tasks.
+                </p>
+                <p style={{ margin: "8px 0 0 0", fontSize: "14px", color: "#64748b", lineHeight: "1.6" }}>
+                  <strong>How to use:</strong> Click the card to generate a formatted report of your project's progress. Perfect for presentations and stakeholder updates.
+                </p>
+              </div>
+
+              {/* The Brain */}
+              <div style={{ borderLeft: "4px solid #16a34a", paddingLeft: "20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                  <div style={{ background: "#f0fdf4", padding: "10px", borderRadius: "10px" }}>
+                    <MessageSquare size={20} color="#16a34a" />
+                  </div>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#1e293b", margin: 0 }}>
+                    The Brain
+                  </h3>
+                </div>
+                <p style={{ margin: 0, fontSize: "14px", color: "#64748b", lineHeight: "1.6" }}>
+                  <strong>What it does:</strong> An intelligent AI assistant that knows your project context and answers questions about your tasks.
+                </p>
+                <p style={{ margin: "8px 0 0 0", fontSize: "14px", color: "#64748b", lineHeight: "1.6" }}>
+                  <strong>How to use:</strong> Click the card to chat with AI. Ask questions like "What's blocking us?", "Which tasks are overdue?", or get project insights.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: "32px", paddingTop: "24px", borderTop: "1px solid #e2e8f0", textAlign: "right" }}>
+              <button
+                onClick={() => setShowAiInfoModal(false)}
+                style={{
+                  padding: "12px 28px",
+                  background: "linear-gradient(135deg, #7c3aed 0%, #667eea 100%)",
+                  color: "white",
+                  borderRadius: "10px",
+                  border: "none",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: "15px",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                  (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 16px rgba(124, 58, 237, 0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                  (e.currentTarget as HTMLElement).style.boxShadow = "none";
+                }}
+              >
+                Got it!
+              </button>
             </div>
           </div>
         </div>
