@@ -130,26 +130,26 @@ export default function Navigation() {
 
   return (
     <>
-      {/* 1. VERTICAL SIDEBAR (Left Rail) */}
-      <aside style={{
+      {/* HORIZONTAL TOP BAR */}
+      <header style={{
         position: 'fixed',
-        left: 0,
         top: 0,
-        bottom: 0,
-        width: '90px',
-        background: 'linear-gradient(to bottom, #ffffff, #f8fafc)',
-        borderRight: '1px solid #e2e8f0',
+        left: 0,
+        right: 0,
+        height: '80px',
+        background: 'linear-gradient(to right, #ffffff, #f8fafc)',
+        borderBottom: '1px solid #e2e8f0',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        padding: '24px 0',
-        zIndex: 1000,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.03)',
+        justifyContent: 'space-between',
+        padding: '0 40px',
+        zIndex: 900,
         backdropFilter: 'blur(10px)',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)'
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.02)'
       }}>
-        {/* Logo */}
-        <Link href="/" style={{ marginBottom: '48px', cursor: 'pointer', textDecoration: 'none' }}>
+        {/* Left: TR Logo */}
+        <Link href="/" style={{ textDecoration: 'none' }}>
           <div style={{
             width: '48px',
             height: '48px',
@@ -163,60 +163,44 @@ export default function Navigation() {
             fontSize: '18px',
             boxShadow: '0 4px 16px rgba(102, 126, 234, 0.4)',
             transition: 'all 0.3s ease',
-            border: 'none'
+            cursor: 'pointer'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
           }}>
             TR
           </div>
         </Link>
-
-        {/* Navigation Items */}
-        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          
-          {/* Dashboard (Active) */}
-          <NavIcon 
-            href="/" 
-            icon={LayoutGrid} 
-            active={pathname === '/'} 
-            label="Dashboard" 
-          />
-          
-          {/* Messages (Coming Soon) */}
-          <NavIcon 
-            href="#" 
-            icon={MessageSquare} 
-            active={false} 
-            label="Messages" 
-            customTooltip="Coming soon on the next update"
-          />
-
-          <div style={{ marginTop: 'auto' }}>
-            <NavIcon href="/settings" icon={Settings} active={pathname.includes('/settings')} label="Settings" />
-          </div>
-        </nav>
-      </aside>
-
-      {/* 2. HORIZONTAL TOP BAR */}
-      <header style={{
-        position: 'fixed',
-        top: 0,
-        left: '90px',
-        right: 0,
-        height: '80px',
-        background: 'linear-gradient(to right, #ffffff, #f8fafc)',
-        borderBottom: '1px solid #e2e8f0',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        padding: '0 40px',
-        zIndex: 900,
-        backdropFilter: 'blur(10px)',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.02)'
-      }}>
-        {/* Actions & Profile */}
+        
+        {/* Right: Actions & Profile */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
           {/* Action Icons */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                cursor: 'pointer', 
+                position: 'relative',
+                padding: '8px',
+                borderRadius: '8px',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f1f5f9';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'none';
+              }}
+            >
+              <MessageSquare size={20} color="#64748b" />
+            </button>
             <button 
               style={{ 
                 background: 'none', 
@@ -437,7 +421,7 @@ export default function Navigation() {
       {/* Main Content Padding Helper */}
       <style jsx global>{`
         main {
-          margin-left: 90px;
+          margin-left: 0;
           margin-top: 80px;
           padding: 32px;
         }
