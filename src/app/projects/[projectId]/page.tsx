@@ -391,6 +391,35 @@ export default function ProjectPage() {
     setShowAiModal(true);
   };
 
+  const handleAiPlannerAccept = async (generatedTasks: any[]) => {
+    try {
+      setShowAiModal(false);
+      
+      if (!generatedTasks || generatedTasks.length === 0) {
+        toast.warning("No tasks to create");
+        return;
+      }
+
+      for (let i = 0; i < generatedTasks.length; i++) {
+        const task = generatedTasks[i];
+        await createTask({
+          title: task.title,
+          description: task.description || "",
+          status: task.status || "TODO",
+          priority: task.priority || "MEDIUM",
+          type: "TASK",
+        });
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      toast.success(`Successfully created ${generatedTasks.length} tasks!`);
+      await reloadTasks();
+    } catch (error) {
+      console.error("Failed to save AI tasks", error);
+      toast.error("Error saving tasks. Please try again.");
+    }
+  };
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
@@ -2146,7 +2175,7 @@ export default function ProjectPage() {
       )}
 
       {/* AI Modals */}
-      <AiProjectModal isOpen={showAiModal} onClose={() => setShowAiModal(false)} onAccept={() => {}} />
+      <AiProjectModal isOpen={showAiModal} onClose={() => setShowAiModal(false)} onAccept={handleAiPlannerAccept} />
       <ProjectHealthModal isOpen={healthModalOpen} onClose={() => setHealthModalOpen(false)} projectName={project?.name || "Project"} data={healthData} loading={healthLoading} />
       <ReleaseNotesModal isOpen={scribeModalOpen} onClose={() => setScribeModalOpen(false)} projectName={project?.name || "Project"} content={scribeContent} loading={scribeLoading} />
       <ProjectChatModal isOpen={chatModalOpen} onClose={() => setChatModalOpen(false)} projectName={project?.name || "Project"} contextTasks={chatContextTasks} />
