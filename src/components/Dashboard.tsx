@@ -475,7 +475,8 @@ export default function Dashboard({ user }: DashboardProps) {
             <div style={{ display: "grid", gap: "20px" }}>
               {enrichedProjects.map((project) => (
                 <div 
-                  key={project.id} 
+                  key={project.id}
+                  onClick={() => router.push(`/projects/${project.id}`)}
                   style={{ 
                     background: "white", 
                     padding: "28px", 
@@ -484,6 +485,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
                     boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
                     position: "relative",
+                    cursor: "pointer",
                   }}
                   onMouseEnter={(e) => {
                        e.currentTarget.style.transform = "translateY(-4px)";
@@ -541,9 +543,7 @@ export default function Dashboard({ user }: DashboardProps) {
                         <Users size={16} color="#667eea" /> {project.membersCount} members
                       </span>
                     </div>
-                    <div style={{ display: "flex", gap: "8px", alignItems: "center", position: "relative" }}>
-                       {/* Standard Buttons */}
-                       <button onClick={() => router.push(`/projects/${project.id}`)} title="View" style={{ padding: "8px", borderRadius: "8px", background: "#667eea", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center" }}><Eye size={16}/></button>
+                    <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: "8px", alignItems: "center", position: "relative" }}>
                        <ProjectDeleteButton 
                          projectId={project.id} 
                          projectName={project.name} 
