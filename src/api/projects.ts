@@ -56,3 +56,16 @@ export async function deleteProject(
     method: "DELETE",
   });
 }
+
+export async function updateProject(
+  callApi: CallApiFn,
+  projectId: string,
+  data: Partial<Pick<Project, "name" | "description" | "archived">>
+): Promise<Project> {
+  const res = await callApi(`projects/${projectId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+
+  return (res && res.project) || res;
+}

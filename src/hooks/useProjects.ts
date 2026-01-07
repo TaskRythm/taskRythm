@@ -4,7 +4,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspaceStore } from '@/store/workspaceStore';
-import { fetchProjects, createProject, Project } from '@/api/projects';
+import {
+  fetchProjects,
+  createProject,
+  updateProject as updateProjectApi,
+  Project,
+} from '@/api/projects';
 
 export function useProjects() {
   const { callApi, isAuthenticated } = useAuth();
@@ -13,6 +18,7 @@ export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
@@ -53,6 +59,34 @@ export function useProjects() {
     }
   };
 
+  const updateProject = async (
+    projectId: string,
+    body: Partial<Pick<Project, 'name' | 'description' | 'archived'>>,
+  ) => {
+    if (!activeWorkspaceId) throw new Error('No active workspace selected');
+
+    try {
+      setUpdating(true);
+      setError(null);
+
+      const updated = await updateProjectApi(callApi, projectId, body);
+
+      setProjects((prev) =>
+        prev.map((project) =>
+          project.id === projectId ? { ...project, ...updated } : project,
+        ),
+      );
+
+      return updated;
+    } catch (err: any) {
+      console.error('Error updating project', err);
+      setError(err.message || 'Failed to update project');
+      throw err;
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated && activeWorkspaceId) {
       load();
@@ -65,8 +99,10 @@ export function useProjects() {
     projects,
     loading,
     creating,
+    updating,
     error,
     reloadProjects: load,
     createProject: newProject,
+    updateProject,
   };
 }

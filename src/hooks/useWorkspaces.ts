@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useWorkspaceStore,
   WorkspaceMembership,
   WorkspaceRole,
 } from "@/store/workspaceStore";
-import { fetchWorkspaces, createWorkspace } from "@/api/workspaces";
+import { fetchWorkspaces, createWorkspace, updateWorkspace as updateWorkspaceApi } from "@/api/workspaces";
 
 /**
  * IMPORTANT:
@@ -68,6 +68,7 @@ export function useWorkspaces() {
     error,
     setError,
   } = useWorkspaceStore();
+  const [updating, setUpdating] = useState(false);
 
   const load = async () => {
     if (!isAuthenticated) return;
@@ -121,6 +122,42 @@ export function useWorkspaces() {
     }
   };
 
+  const updateWorkspace = async (
+    workspaceId: string,
+    data: { name?: string; description?: string }
+  ) => {
+    try {
+      setUpdating(true);
+      setError(null);
+
+      const res = await updateWorkspaceApi(callApi, workspaceId, data);
+      const updated = res?.id ? res : res?.workspace || res;
+
+      setWorkspaces(
+        workspaces.map((m) =>
+          m.workspaceId === workspaceId
+            ? {
+                ...m,
+                workspace: {
+                  ...m.workspace,
+                  name: updated.name ?? m.workspace.name,
+                  slug: updated.slug ?? m.workspace.slug,
+                },
+              }
+            : m
+        )
+      );
+
+      return updated;
+    } catch (err: any) {
+      console.error("Failed to update workspace", err);
+      setError(err?.message || "Failed to update workspace");
+      throw err;
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       void load();
@@ -132,10 +169,12 @@ export function useWorkspaces() {
     workspaces,
     loading,
     creating,
+    updating,
     error,
     activeWorkspaceId,
     setActiveWorkspace,
     createWorkspace: newWorkspace,
     reload: load,
+    updateWorkspace,
   };
 }
