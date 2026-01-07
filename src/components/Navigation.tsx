@@ -206,45 +206,14 @@ export default function Navigation() {
         borderBottom: '1px solid #e2e8f0',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         padding: '0 40px',
         zIndex: 900,
         backdropFilter: 'blur(10px)',
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
         boxShadow: '0 4px 16px rgba(0,0,0,0.02)'
       }}>
-        {/* Left: Search Bar */}
-        <div style={{ position: 'relative', width: '420px' }}>
-          <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          <input 
-            type="text" 
-            placeholder="Search..." 
-            style={{
-              width: '100%',
-              padding: '12px 16px 12px 44px',
-              borderRadius: '10px',
-              border: '1px solid #e2e8f0',
-              background: '#f8fafc',
-              fontSize: '14px',
-              color: '#1e293b',
-              outline: 'none',
-              transition: 'all 0.3s ease',
-              fontWeight: '400'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#667eea';
-              e.currentTarget.style.background = '#ffffff';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.1)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#e2e8f0';
-              e.currentTarget.style.background = '#f8fafc';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          />
-        </div>
-
-        {/* Right: Actions & Profile */}
+        {/* Actions & Profile */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
           {/* Action Icons */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
