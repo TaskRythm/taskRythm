@@ -81,7 +81,7 @@ const ISSUE_TYPE_LABELS: Record<TaskType, string> = {
 };
 
 const ISSUE_TYPE_COLORS: Record<TaskType, string> = {
-  TASK: "#667eea",
+  TASK: "#3B82F6",
   BUG: "#ef4444",
   FEATURE: "#3b82f6",
   IMPROVEMENT: "#8b5cf6",
@@ -753,10 +753,10 @@ export default function ProjectPage() {
       {/* Top Bar */}
       <div
         style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
           borderBottom: "none",
           padding: "24px 0",
-          boxShadow: "0 4px 20px rgba(102, 126, 234, 0.25)",
+          boxShadow: "0 4px 20px rgba(59, 130, 246, 0.25)",
           position: "relative",
           overflow: "hidden",
         }}
@@ -842,11 +842,11 @@ export default function ProjectPage() {
               width: "40px",
               height: "40px",
               borderRadius: "12px",
-              background: "linear-gradient(135deg, #7c3aed 0%, #667eea 100%)",
+              background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(124, 58, 237, 0.3)",
+              boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
             }}>
               <Sparkles size={20} color="white" />
             </div>
@@ -1028,11 +1028,11 @@ export default function ProjectPage() {
                     width: "36px",
                     height: "36px",
                     borderRadius: "8px",
-                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+                    boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
                   }}>
                     <Tag size={18} color="white" />
                   </div>
@@ -1072,14 +1072,14 @@ export default function ProjectPage() {
                       alignItems: "center",
                       gap: "8px",
                       padding: "10px 18px",
-                      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
                       color: "white",
                       border: "none",
                       borderRadius: "10px",
                       fontWeight: 700,
                       cursor: "pointer",
                       fontSize: "14px",
-                      boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+                      boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
                       transition: "transform 0.2s ease"
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
@@ -1145,7 +1145,7 @@ export default function ProjectPage() {
                     margin: "0 auto 16px",
                     borderRadius: "50%",
                     border: "4px solid #e2e8f0",
-                    borderTopColor: "#667eea",
+                    borderTopColor: "#3B82F6",
                     animation: "spin 1s linear infinite",
                   }}
                 />
@@ -1675,7 +1675,7 @@ export default function ProjectPage() {
             }}
           >
              <div style={{ marginBottom: "24px" }}>
-              <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px", boxShadow: "0 4px 16px rgba(102, 126, 234, 0.3)" }}>
+              <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px", boxShadow: "0 4px 16px rgba(59, 130, 246, 0.3)" }}>
                 <Tag size={24} color="white" />
               </div>
               <h2 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "8px", color: "#1e293b", letterSpacing: "-0.4px" }}>Task Details</h2>
@@ -1846,7 +1846,7 @@ export default function ProjectPage() {
                  ))}
                  <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
                    <input type="text" placeholder="Add subtask" value={newSubtaskTitle} onChange={(e) => setNewSubtaskTitle(e.target.value)} disabled={isReadOnly || tasksSaving} onKeyPress={(e) => e.key === "Enter" && handleAddSubtask()} style={{ flex: 1, padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "13px", fontWeight: 600, outline: "none" }} />
-                   <button type="button" onClick={handleAddSubtask} disabled={isReadOnly || tasksSaving || !newSubtaskTitle.trim()} style={{ padding: "10px 16px", fontSize: "13px", fontWeight: 700, borderRadius: "10px", border: "none", background: isReadOnly || tasksSaving || !newSubtaskTitle.trim() ? "#cbd5e1" : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white", display: "flex", alignItems: "center", gap: "6px" }}><Plus size={14} /> Add</button>
+                   <button type="button" onClick={handleAddSubtask} disabled={isReadOnly || tasksSaving || !newSubtaskTitle.trim()} style={{ padding: "10px 16px", fontSize: "13px", fontWeight: 700, borderRadius: "10px", border: "none", background: isReadOnly || tasksSaving || !newSubtaskTitle.trim() ? "#cbd5e1" : "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)", color: "white", display: "flex", alignItems: "center", gap: "6px" }}><Plus size={14} /> Add</button>
                  </div>
                </div>
 
@@ -1855,7 +1855,7 @@ export default function ProjectPage() {
                  <button type="button" onClick={() => setShowDeleteConfirm(true)} disabled={isReadOnly || tasksSaving} style={{ padding: "12px 20px", fontSize: "14px", fontWeight: 700, borderRadius: "10px", border: "none", background: isReadOnly || tasksSaving ? "#f1f5f9" : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", color: isReadOnly || tasksSaving ? "#cbd5e1" : "white", display: "flex", alignItems: "center", gap: "8px" }}><Trash2 size={16} /> Delete task</button>
                  <div style={{ display: "flex", gap: "12px" }}>
                    <button type="button" onClick={handleCloseTaskModal} disabled={tasksSaving} style={{ padding: "12px 20px", fontSize: "14px", fontWeight: 700, borderRadius: "10px", border: "2px solid #e2e8f0", background: "white", color: "#64748b", display: "flex", alignItems: "center", gap: "8px" }}><X size={16} /> Cancel</button>
-                   <button type="button" onClick={handleSaveTask} disabled={isReadOnly || tasksSaving || !editTitle.trim()} style={{ padding: "12px 24px", fontSize: "14px", fontWeight: 700, borderRadius: "10px", border: "none", background: isReadOnly || tasksSaving || !editTitle.trim() ? "#cbd5e1" : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white", display: "flex", alignItems: "center", gap: "8px" }}>{tasksSaving ? "Saving..." : <><Save size={16} /> Save changes</>}</button>
+                   <button type="button" onClick={handleSaveTask} disabled={isReadOnly || tasksSaving || !editTitle.trim()} style={{ padding: "12px 24px", fontSize: "14px", fontWeight: 700, borderRadius: "10px", border: "none", background: isReadOnly || tasksSaving || !editTitle.trim() ? "#cbd5e1" : "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)", color: "white", display: "flex", alignItems: "center", gap: "8px" }}>{tasksSaving ? "Saving..." : <><Save size={16} /> Save changes</>}</button>
                  </div>
                </div>
             </div>
@@ -1911,8 +1911,8 @@ export default function ProjectPage() {
                     fontWeight: 700,
                     textTransform: "uppercase",
                     letterSpacing: "0.5px",
-                    color: createModalTab === tab ? "#667eea" : "#94a3b8",
-                    borderBottom: createModalTab === tab ? "2px solid #667eea" : "none",
+                    color: createModalTab === tab ? "#3B82F6" : "#94a3b8",
+                    borderBottom: createModalTab === tab ? "2px solid #3B82F6" : "none",
                     cursor: "pointer",
                     transition: "all 0.2s ease",
                   }}
@@ -2240,7 +2240,7 @@ export default function ProjectPage() {
                   width: "50px",
                   height: "50px",
                   borderRadius: "12px",
-                  background: "linear-gradient(135deg, #7c3aed 0%, #667eea 100%)",
+                  background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -2337,7 +2337,7 @@ export default function ProjectPage() {
                 onClick={() => setShowAiInfoModal(false)}
                 style={{
                   padding: "12px 28px",
-                  background: "linear-gradient(135deg, #7c3aed 0%, #667eea 100%)",
+                  background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
                   color: "white",
                   borderRadius: "10px",
                   border: "none",

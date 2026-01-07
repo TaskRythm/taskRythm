@@ -54,7 +54,7 @@ export default function ProjectsList() {
           {/* 👇 THE NEW AI BUTTON */}
           <button
             onClick={() => setIsAiModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-200 transition-colors font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-200 transition-colors font-medium"
           >
             <Sparkles size={18} />
             AI Planner

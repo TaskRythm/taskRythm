@@ -27,13 +27,13 @@ export default function CalendarPage() {
         <div style={{
           width: '80px',
           height: '80px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
           borderRadius: '20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           margin: '0 auto 24px',
-          boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4)'
+          boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4)'
         }}>
           <Calendar size={40} color="white" />
         </div>
@@ -59,7 +59,7 @@ export default function CalendarPage() {
         
         <div style={{
           padding: '12px 24px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
           color: 'white',
           borderRadius: '10px',
           fontWeight: '600',
@@ -77,7 +77,7 @@ export default function CalendarPage() {
             width: '100%',
             padding: '14px',
             background: '#f1f5f9',
-            color: '#667eea',
+            color: '#3B82F6',
             border: 'none',
             borderRadius: '10px',
             fontSize: '16px',

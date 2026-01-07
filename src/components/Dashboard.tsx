@@ -292,10 +292,10 @@ export default function Dashboard({ user }: DashboardProps) {
     }}>
       {/* Header */}
       <div style={{ 
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", 
+        background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)", 
         borderBottom: "none", 
         padding: "48px 0", 
-        boxShadow: "0 4px 20px rgba(102, 126, 234, 0.25)",
+        boxShadow: "0 4px 20px rgba(59, 130, 246, 0.25)",
         position: "relative",
         overflow: "hidden"
       }}>
@@ -343,7 +343,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     gap: "10px", 
                     padding: "14px 24px", 
                     background: "white", 
-                    color: "#667eea", 
+                    color: "#3B82F6", 
                     borderRadius: "12px", 
                     fontWeight: 700, 
                     cursor: "pointer", 
@@ -392,11 +392,11 @@ export default function Dashboard({ user }: DashboardProps) {
                   width: "36px",
                   height: "36px",
                   borderRadius: "8px",
-                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
+                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)"
                 }}>
                   <Clock size={18} color="white" />
                 </div>
@@ -415,7 +415,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 <div style={{ display: "grid", gap: "14px" }}>
                   {activity.slice(0, 5).map((item) => (
                     <div key={item.id} style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                      <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#667eea" }} />
+                      <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#3B82F6" }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: "13px", fontWeight: 600, color: "#1e293b" }}>{item.message}</div>
                         <div style={{ fontSize: "11px", color: "#94a3b8" }}>{formatTimeAgo(item.createdAt)}</div>
@@ -435,11 +435,11 @@ export default function Dashboard({ user }: DashboardProps) {
                   width: "40px",
                   height: "40px",
                   borderRadius: "10px",
-                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
+                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)"
                 }}>
                   <FolderKanban size={20} color="white" />
                 </div>
@@ -507,7 +507,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     height: "4px",
                     borderTopLeftRadius: "16px",
                     borderTopRightRadius: "16px",
-                    background: `linear-gradient(90deg, #667eea 0%, #764ba2 ${project.progress}%, #e2e8f0 ${project.progress}%)`,
+                    background: `linear-gradient(90deg, #3B82F6 0%, #2563EB ${project.progress}%, #e2e8f0 ${project.progress}%)`,
                   }} />
                   
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
@@ -527,7 +527,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   <div style={{ height: "8px", background: "#f1f5f9", borderRadius: "10px", marginBottom: "20px", overflow: "hidden" }}>
                     <div style={{ 
                       height: "100%", 
-                      background: "linear-gradient(90deg, #667eea 0%, #764ba2 100%)", 
+                      background: "linear-gradient(90deg, #3B82F6 0%, #2563EB 100%)",
                       width: `${project.progress}%`, 
                       borderRadius: "10px", 
                       transition: "width 0.5s ease"
@@ -537,10 +537,10 @@ export default function Dashboard({ user }: DashboardProps) {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ display: "flex", gap: "20px", fontSize: "14px", color: "#64748b" }}>
                       <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
-                        <ClipboardList size={16} color="#667eea" /> {project.tasksCount} tasks
+                        <ClipboardList size={16} color="#3B82F6" /> {project.tasksCount} tasks
                       </span>
                       <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
-                        <Users size={16} color="#667eea" /> {project.membersCount} members
+                        <Users size={16} color="#3B82F6" /> {project.membersCount} members
                       </span>
                     </div>
                     <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: "8px", alignItems: "center", position: "relative" }}>
@@ -575,7 +575,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 <textarea placeholder="Description" value={newProjectDescription} onChange={(e) => setNewProjectDescription(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }} />
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
                     <button onClick={handleCloseNewProject} style={{ padding: "8px 16px", background: "white", border: "1px solid #e2e8f0", borderRadius: "8px" }}>Cancel</button>
-                    <button onClick={handleCreateProject} style={{ padding: "8px 16px", background: "#667eea", color: "white", border: "none", borderRadius: "8px" }}>Create</button>
+                    <button onClick={handleCreateProject} style={{ padding: "8px 16px", background: "#3B82F6", color: "white", border: "none", borderRadius: "8px" }}>Create</button>
                 </div>
             </div>
         </div>
