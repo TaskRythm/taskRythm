@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   FolderKanban, Users, ClipboardList, Clock, Plus,
-  Sparkles, HeartPulse, Eye, FileText, TrendingUp, Activity, MessageSquare
+  Eye, TrendingUp, Activity, X
 } from "lucide-react";
 
 import WorkspaceSidebar from "./WorkspaceSidebar";
@@ -14,7 +14,7 @@ import { useWorkspaceActivity } from "@/hooks/useWorkspaceActivity";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import WorkspaceMembersCard from "./WorkspaceMembersCard";
 import WorkspaceSettings from "./WorkspaceSettings";
-import ProjectDeleteButton from "./ProjectDeleteButton"; // 👈 Ensuring this is imported
+import ProjectDeleteButton from "./ProjectDeleteButton"; 
 import ProjectHealthModal from "./ProjectHealthModal";
 import { writeReleaseNotes } from "@/api/ai";
 import ReleaseNotesModal from "./ReleaseNotesModal";
@@ -67,7 +67,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [chatProjectName, setChatProjectName] = useState("");
   const [chatContextTasks, setChatContextTasks] = useState<any[]>([]);
 
-  // State for dynamic project data
+  // 👇 State for dynamic project data
   const [enrichedProjects, setEnrichedProjects] = useState<any[]>([]);
 
   const activeWorkspace =
@@ -83,7 +83,6 @@ export default function Dashboard({ user }: DashboardProps) {
     activity = [], 
     loading: activityLoading,
     error: activityError,
-    reloadActivity,
   } = useWorkspaceActivity(); 
 
   // EFFECT: Fetch detailed stats for projects
@@ -175,7 +174,6 @@ export default function Dashboard({ user }: DashboardProps) {
         description: newProjectDescription.trim() || undefined,
       });
       handleCloseNewProject();
-      reloadActivity(); // Reload activity after creating project
     } catch (err: any) {
       setLocalError(err.message || "Failed to create project");
     }
@@ -203,7 +201,7 @@ export default function Dashboard({ user }: DashboardProps) {
       toast.success(`Successfully added ${tasks.length} tasks to the project!`);
       setShowAiModal(false);
       setSelectedAiProjectId(null);
-      reloadActivity(); // Reload activity instead of full page refresh
+      window.location.reload();
     } catch (error) {
       console.error("Failed to save AI tasks", error);
       toast.error("Error saving tasks. Please try again.");
@@ -486,25 +484,27 @@ export default function Dashboard({ user }: DashboardProps) {
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
                     boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
                     position: "relative",
-                    overflow: "hidden"
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "0 12px 28px rgba(0, 0, 0, 0.12)";
-                    e.currentTarget.style.borderColor = "#cbd5e1";
+                       e.currentTarget.style.transform = "translateY(-4px)";
+                       e.currentTarget.style.boxShadow = "0 12px 28px rgba(0, 0, 0, 0.12)";
+                       e.currentTarget.style.borderColor = "#cbd5e1";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.05)";
-                    e.currentTarget.style.borderColor = "#e2e8f0";
+                       e.currentTarget.style.transform = "translateY(0)";
+                       e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.05)";
+                       e.currentTarget.style.borderColor = "#e2e8f0";
                   }}
                 >
+                  {/* Progress Bar (Manually rounded top corners because of visible overflow) */}
                   <div style={{
                     position: "absolute",
                     top: 0,
                     left: 0,
                     width: "100%",
                     height: "4px",
+                    borderTopLeftRadius: "16px",
+                    borderTopRightRadius: "16px",
                     background: `linear-gradient(90deg, #667eea 0%, #764ba2 ${project.progress}%, #e2e8f0 ${project.progress}%)`,
                   }} />
                   
@@ -541,21 +541,15 @@ export default function Dashboard({ user }: DashboardProps) {
                         <Users size={16} color="#667eea" /> {project.membersCount} members
                       </span>
                     </div>
-                    <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                       <button onClick={() => openAiPlannerForProject(project.id)} title="AI Planner" style={{ padding: "8px", borderRadius: "8px", background: "#f3e8ff", color: "#7c3aed", border: "none", cursor: "pointer" }}><Sparkles size={16}/></button>
-                       <button onClick={() => handleCheckHealth(project.id, project.name)} title="Project Health" style={{ padding: "8px", borderRadius: "8px", background: "#fce7f3", color: "#db2777", border: "none", cursor: "pointer" }}><HeartPulse size={16}/></button>
-                       <button onClick={() => handleScribe(project.id, project.name)} title="Scribe" style={{ padding: "8px", borderRadius: "8px", background: "#dbeafe", color: "#2563eb", border: "none", cursor: "pointer" }}><FileText size={16}/></button>
-                       <button onClick={() => handleOpenChat(project.id, project.name)} title="Brain" style={{ padding: "8px", borderRadius: "8px", background: "#dcfce7", color: "#16a34a", border: "none", cursor: "pointer" }}><MessageSquare size={16}/></button>
-                       <button onClick={() => router.push(`/projects/${project.id}`)} title="View" style={{ padding: "8px", borderRadius: "8px", background: "#667eea", color: "white", border: "none", cursor: "pointer" }}><Eye size={16}/></button>
-                       
-                       {/* 👇 PROJECT DELETE BUTTON IS HERE */}
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center", position: "relative" }}>
+                       {/* Standard Buttons */}
+                       <button onClick={() => router.push(`/projects/${project.id}`)} title="View" style={{ padding: "8px", borderRadius: "8px", background: "#667eea", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center" }}><Eye size={16}/></button>
                        <ProjectDeleteButton 
-                          projectId={project.id} 
-                          projectName={project.name} 
-                          onDeleted={() => { 
-                            setEnrichedProjects((prev) => prev.filter((p) => p.id !== project.id));
-                            reloadActivity(); // Reload activity after deleting project
-                          }} 
+                         projectId={project.id} 
+                         projectName={project.name} 
+                         onDeleted={() => { 
+                           setEnrichedProjects((prev) => prev.filter((p) => p.id !== project.id)); 
+                         }} 
                        />
                     </div>
                   </div>
