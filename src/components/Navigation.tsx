@@ -150,20 +150,13 @@ export default function Navigation() {
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
         boxShadow: '0 4px 16px rgba(0,0,0,0.02)'
       }}>
-        {/* Left: TR Logo */}
+        {/* Left: TaskRythm Logo */}
         <Link href="/" style={{ textDecoration: 'none' }}>
           <div style={{
-            width: '48px',
-            height: '48px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            borderRadius: '12px',
+            height: '200px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
-            fontWeight: '800',
-            fontSize: '18px',
-            boxShadow: '0 4px 16px rgba(102, 126, 234, 0.4)',
             transition: 'all 0.3s ease',
             cursor: 'pointer'
           }}
@@ -173,7 +166,15 @@ export default function Navigation() {
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
           }}>
-            TR
+            <img 
+              src="/taskrythmlogo.png" 
+              alt="TaskRythm Logo" 
+              style={{
+                height: '200px',
+                width: 'auto',
+                objectFit: 'contain'
+              }}
+            />
           </div>
         </Link>
         
@@ -228,17 +229,6 @@ export default function Navigation() {
               title="Notifications"
             >
               <Bell size={20} color="#64748b" />
-              <span style={{ 
-                position: 'absolute', 
-                top: 4, 
-                right: 4, 
-                width: '8px', 
-                height: '8px', 
-                background: '#ef4444', 
-                borderRadius: '50%', 
-                border: '2px solid white',
-                boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
-              }}></span>
             </button>
             <Link href="/report" style={{ textDecoration: 'none' }}>
               <button 
