@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 
@@ -29,18 +30,28 @@ interface WorkspaceState {
   setError: (msg: string | null) => void;
 }
 
-export const useWorkspaceStore = create<WorkspaceState>((set) => ({
-  workspaces: [],
-  activeWorkspaceId: null,
+export const useWorkspaceStore = create<WorkspaceState>()(
+  persist(
+    (set) => ({
+      workspaces: [],
+      activeWorkspaceId: null,
 
-  loading: false,
-  creating: false,
-  error: null,
+      loading: false,
+      creating: false,
+      error: null,
 
-  setWorkspaces: (data) => set({ workspaces: data }),
-  setActiveWorkspace: (id) => set({ activeWorkspaceId: id }),
+      setWorkspaces: (data) => set({ workspaces: data }),
+      setActiveWorkspace: (id) => set({ activeWorkspaceId: id }),
 
-  setLoading: (state) => set({ loading: state }),
-  setCreating: (state) => set({ creating: state }),
-  setError: (msg) => set({ error: msg }),
-}));
+      setLoading: (state) => set({ loading: state }),
+      setCreating: (state) => set({ creating: state }),
+      setError: (msg) => set({ error: msg }),
+    }),
+    {
+      name: "workspace-store",
+      partialize: (state) => ({
+        activeWorkspaceId: state.activeWorkspaceId,
+      }),
+    }
+  )
+);

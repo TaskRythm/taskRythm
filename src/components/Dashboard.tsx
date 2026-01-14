@@ -13,7 +13,6 @@ import { useRouter } from "next/navigation";
 import { useWorkspaceActivity } from "@/hooks/useWorkspaceActivity";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 import WorkspaceMembersCard from "./WorkspaceMembersCard";
-import WorkspaceSettings from "./WorkspaceSettings";
 import ProjectDeleteButton from "./ProjectDeleteButton"; 
 import ProjectHealthModal from "./ProjectHealthModal";
 import { writeReleaseNotes } from "@/api/ai";
@@ -45,6 +44,7 @@ interface DashboardProps {
 export default function Dashboard({ user }: DashboardProps) {
   const { callApi, getAccessTokenSilently } = useAuth();
   const toast = useToast();
+  const [membersExpanded, setMembersExpanded] = useState(false);
 
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const {
@@ -374,7 +374,7 @@ export default function Dashboard({ user }: DashboardProps) {
       <div className="container" style={{ padding: "32px 0" }}>
         
         {/* GRID LAYOUT */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: "28px", alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: "28px", alignItems: "start", transition: "all 0.3s ease" }}>
           
           {/* 1. SIDEBAR (Span 3) */}
           <div style={{ gridColumn: "span 3" }}>
@@ -427,8 +427,8 @@ export default function Dashboard({ user }: DashboardProps) {
             </div>
           </div>
 
-          {/* 2. PROJECTS LIST (Span 6) */}
-          <div style={{ gridColumn: "span 6" }}>
+          {/* 2. PROJECTS LIST (Span 6 → 3 when expanded) */}
+          <div style={{ gridColumn: membersExpanded ? "span 3" : "span 6", transition: "all 0.3s ease" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div style={{
@@ -558,10 +558,9 @@ export default function Dashboard({ user }: DashboardProps) {
             </div>
           </div>
 
-          {/* 3. RIGHT SIDEBAR (Span 3) */}
-          <div style={{ gridColumn: "span 3" }}>
-            <WorkspaceMembersCard />
-            <WorkspaceSettings />
+          {/* 3. RIGHT SIDEBAR (Span 3 → 6 when expanded) */}
+          <div style={{ gridColumn: membersExpanded ? "span 6" : "span 3", transition: "all 0.3s ease" }}>
+            <WorkspaceMembersCard isExpanded={membersExpanded} onExpandAction={setMembersExpanded} />
           </div>
         </div>
       </div>

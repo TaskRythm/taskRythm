@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Users, Link as LinkIcon, UserPlus, Crown, Shield, Eye, Trash2, Mail, Calendar, AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Users, Link as LinkIcon, UserPlus, Crown, Shield, Eye, Trash2, Mail, Calendar, AlertTriangle, Maximize2, Minimize2 } from "lucide-react";
 import {
   useWorkspaceStore,
   type WorkspaceRole,
 } from "@/store/workspaceStore";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { useToast } from "@/contexts/ToastContext";
 import {
   fetchWorkspaceMembers,
@@ -124,10 +126,12 @@ function getRoleColor(role: WorkspaceRole) {
   }
 }
 
-export function WorkspaceMembersCard() {
-  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
+export function WorkspaceMembersCard({ isExpanded, onExpandAction }: { isExpanded?: boolean; onExpandAction?: (expanded: boolean) => void }) {
+  const { workspaces, activeWorkspaceId, setActiveWorkspace } = useWorkspaceStore();
   const { callApi, user: currentUser } = useAuth();
+  const { reload: reloadWorkspaces } = useWorkspaces();
   const toast = useToast();
+  const router = useRouter();
 
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -180,6 +184,25 @@ export function WorkspaceMembersCard() {
   const canInvite = currentRole === "OWNER" || currentRole === "ADMIN";
   const canPromoteToOwner = currentRole === "OWNER";
 
+  // Helper to check if current user can change a member's role
+  const canChangeRole = (member: any, newRole: WorkspaceRole): boolean => {
+    // Only OWNER or ADMIN can manage
+    if (!canManageMembers) return false;
+
+    // OWNER can change anyone to any role
+    if (currentRole === "OWNER") return true;
+
+    // ADMIN can only change roles to MEMBER or VIEWER (lower positions)
+    if (currentRole === "ADMIN") {
+      // ADMINs cannot promote to OWNER or ADMIN
+      if (newRole === "OWNER" || newRole === "ADMIN") return false;
+      // ADMINs can demote to MEMBER or VIEWER
+      return true;
+    }
+
+    return false;
+  };
+
   const ownerCount = useMemo(
     () => members.filter((m) => m.role === "OWNER").length,
     [members]
@@ -213,6 +236,7 @@ export function WorkspaceMembersCard() {
     if (!activeWorkspaceId || !canInvite) {
       setInvites([]);
       setInvitesError(null);
+      setGlobalError(null);
       return;
     }
 
@@ -220,6 +244,7 @@ export function WorkspaceMembersCard() {
       try {
         setInvitesLoading(true);
         setInvitesError(null);
+        setGlobalError(null);
         const data = await fetchWorkspaceInvites(callApi, activeWorkspaceId);
         setInvites(data);
       } catch (err: any) {
@@ -243,24 +268,53 @@ export function WorkspaceMembersCard() {
     void load();
   }, [activeWorkspaceId, callApi, canInvite]);
 
+  // ===== Auto-dismiss globalError after 2 seconds =====
+  useEffect(() => {
+    if (!globalError) return;
+
+    const timer = setTimeout(() => {
+      setGlobalError(null);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [globalError]);
+
   // ===== Handlers =====
 
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeWorkspaceId || !inviteEmail.trim() || inviteSaving) return;
 
+    const trimmedEmail = inviteEmail.trim().toLowerCase();
+
+    // Check if already a member
+    const isAlreadyMember = members.some((m) => m.user.email?.toLowerCase() === trimmedEmail);
+    if (isAlreadyMember) {
+      setGlobalError("This user is already a member of the workspace.");
+      toast.error("This user is already a member of the workspace.");
+      return;
+    }
+
+    // Check if already invited
+    const isAlreadyInvited = invites.some((inv) => inv.email.toLowerCase() === trimmedEmail);
+    if (isAlreadyInvited) {
+      setGlobalError("This user has already been invited.");
+      toast.error("This user has already been invited.");
+      return;
+    }
+
     setInviteSaving(true);
     setGlobalError(null);
     
     inviteWorkspaceMember(callApi, activeWorkspaceId, {
-      email: inviteEmail.trim(),
+      email: trimmedEmail,
       role: inviteRole,
     }).then((created) => {
       setInvites((prev) => [created, ...prev]);
       setInviteEmail("");
       setInviteRole("MEMBER");
       setInviteOpen(false);
-      toast.success(`Invite sent to ${inviteEmail.trim()}`);
+      toast.success(`Invite sent to ${trimmedEmail}`);
     }).catch((err: any) => {
       const errorMsg = normalizeApiError(err);
       setGlobalError(errorMsg);
@@ -369,31 +423,55 @@ export function WorkspaceMembersCard() {
 
     const displayName = displayNameFromUser(member.user);
     const role = member.role.toLowerCase();
+    const isCurrentUser = currentUser?.sub === member.user.auth0Id;
 
-    const message =
-      `Remove ${displayName} (${role}) from this workspace?\n\n` +
-      "They will immediately lose access to all projects and tasks in this workspace.";
+    const message = isCurrentUser
+      ? `You are about to leave this workspace.\n\n` +
+        `You will immediately lose access to all projects and tasks in this workspace.`
+      : `Remove ${displayName} (${role}) from this workspace?\n\n` +
+        "They will immediately lose access to all projects and tasks in this workspace.";
 
     const doRemove = async () => {
       try {
         setRemoveSavingId(memberId);
         setGlobalError(null);
+        
+        if (isCurrentUser) {
+          // Clear workspace FIRST before removing
+          setActiveWorkspace(null);
+        }
+        
         await removeWorkspaceMember(callApi, activeWorkspaceId, memberId);
-        setMembers((prev) => prev.filter((m) => m.id !== memberId));
-        toast.success(`${displayNameFromUser(member.user)} removed from workspace`);
+        
+        if (isCurrentUser) {
+          // Reload and then redirect
+          await reloadWorkspaces();
+          toast.success("You have left the workspace");
+          // Give a moment for state to update before redirect
+          setTimeout(() => {
+            router.push("/");
+          }, 500);
+        } else {
+          // If removing someone else
+          setMembers((prev) => prev.filter((m) => m.id !== memberId));
+          toast.success(`${displayNameFromUser(member.user)} removed from workspace`);
+        }
       } catch (err: any) {
         const errorMsg = normalizeApiError(err);
-        setGlobalError(errorMsg);
-        toast.error(errorMsg || 'Failed to remove member');
+        // Only show error if not a permission error from leaving
+        if (!isCurrentUser || !errorMsg.includes("member")) {
+          setGlobalError(errorMsg);
+          toast.error(errorMsg || 'Failed to remove member');
+        }
       } finally {
         setRemoveSavingId(null);
       }
     };
 
     setConfirmDialog({
-      title: "Remove member",
+      title: isCurrentUser ? "Leave workspace" : "Remove member",
       message,
-      confirmText: "Remove",
+      confirmText: isCurrentUser ? "Leave" : "Remove",
       cancelText: "Cancel",
       isDangerous: true,
       onConfirm: doRemove,
@@ -493,38 +571,75 @@ export function WorkspaceMembersCard() {
           </p>
         </div>
 
-        {canInvite && (
-          <button
-            type="button"
-            onClick={() => setInviteOpen(true)}
-            style={{
-              padding: "10px 16px",
-              borderRadius: "10px",
-              border: "none",
-              fontSize: "13px",
-              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-              color: "white",
-              cursor: "pointer",
-              fontWeight: 700,
-              boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 6px 16px rgba(16, 185, 129, 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.3)";
-            }}
-          >
-            <UserPlus size={16} />
-            
-          </button>
-        )}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          {onExpandAction && (
+            <button
+              type="button"
+              onClick={() => onExpandAction(!isExpanded)}
+              style={{
+                padding: "10px 12px",
+                borderRadius: "10px",
+                border: "1px solid #e2e8f0",
+                fontSize: "13px",
+                background: "white",
+                color: "#64748b",
+                cursor: "pointer",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                transition: "all 0.2s ease",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#cbd5e1";
+                e.currentTarget.style.background = "#f8fafc";
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "#e2e8f0";
+                e.currentTarget.style.background = "white";
+                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.04)";
+              }}
+              title={isExpanded ? "Collapse" : "Expand"}
+            >
+              {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+          )}
+
+          {canInvite && (
+            <button
+              type="button"
+              onClick={() => setInviteOpen(true)}
+              style={{
+                padding: "10px 16px",
+                borderRadius: "10px",
+                border: "none",
+                fontSize: "13px",
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 700,
+                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 6px 16px rgba(16, 185, 129, 0.4)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.3)";
+              }}
+            >
+              <UserPlus size={16} />
+              
+            </button>
+          )}
+        </div>
       </div>
 
       {globalError && (
@@ -756,7 +871,7 @@ export function WorkspaceMembersCard() {
                               e.target.value as WorkspaceRole
                             )
                           }
-                          disabled={roleSavingId === m.id}
+                          disabled={roleSavingId === m.id || !canChangeRole(m, m.role)}
                           style={{
                             padding: "8px 12px",
                             borderRadius: "8px",
@@ -764,12 +879,15 @@ export function WorkspaceMembersCard() {
                             fontSize: "13px",
                             background: "white",
                             fontWeight: 600,
-                            cursor: roleSavingId === m.id ? "not-allowed" : "pointer",
+                            cursor: roleSavingId === m.id || !canChangeRole(m, m.role) ? "not-allowed" : "pointer",
                             transition: "all 0.2s ease",
+                            opacity: !canChangeRole(m, m.role) ? 0.5 : 1,
                           }}
                           onFocus={(e) => {
-                            e.currentTarget.style.borderColor = "#10b981";
-                            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                            if (canChangeRole(m, m.role)) {
+                              e.currentTarget.style.borderColor = "#10b981";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                            }
                           }}
                           onBlur={(e) => {
                             e.currentTarget.style.borderColor = "#e2e8f0";
@@ -779,7 +897,9 @@ export function WorkspaceMembersCard() {
                           {canPromoteToOwner && (
                             <option value="OWNER">Owner</option>
                           )}
-                          <option value="ADMIN">Admin</option>
+                          {(currentRole === "OWNER" || (currentRole === "ADMIN")) && (
+                            <option value="ADMIN">Admin</option>
+                          )}
                           <option value="MEMBER">Member</option>
                           <option value="VIEWER">Viewer</option>
                         </select>
@@ -804,7 +924,7 @@ export function WorkspaceMembersCard() {
                       </div>
                     )}
 
-                    {canManageMembers && m.role !== "OWNER" && (
+                    {(currentRole === "OWNER" || currentUser?.sub === m.user.auth0Id) && m.role !== "OWNER" && (
                       <button
                         type="button"
                         onClick={() => handleRemoveMember(m.id)}
@@ -834,6 +954,7 @@ export function WorkspaceMembersCard() {
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background = "transparent";
                         }}
+                        title={currentUser?.sub === m.user.auth0Id ? "Leave workspace" : "Remove member"}
                       >
                         {removeSavingId === m.id ? (
                           <div
@@ -930,136 +1051,124 @@ export function WorkspaceMembersCard() {
             >
               {invites.map((inv) => {
                 const roleColors = getRoleColor(inv.role);
+
+                const copyColors = {
+                  bg: "#ecfdf5",     
+                  color: "#047857",  
+                  border: "#d1fae5", 
+                };
+
+                const badgeStyle = (
+                  colors: { bg: string; color: string; border: string },
+                  clickable = false
+                ): React.CSSProperties => ({
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "4px 10px",
+                  background: colors.bg,
+                  color: colors.color,
+                  borderRadius: "999px",
+                  fontWeight: 600,
+                  fontSize: "12px",
+                  border: `1px solid ${colors.border}`,
+                  lineHeight: 1.2,
+                  userSelect: "none",
+                  whiteSpace: "nowrap",
+                  cursor: clickable ? "pointer" : "default",
+                  transition: "all 0.15s ease",
+                });
+
                 return (
                   <div
                     key={inv.id}
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: "8px",
+                      gap: "12px",
                       padding: "16px",
-                      borderRadius: "14px",
-                      background: "#fff7ed",
+                      borderRadius: "12px",
+                      background: "#fffbeb",
                       border: "1px solid #fde68a",
-                      boxShadow: "0 2px 8px rgba(234, 179, 8, 0.12)",
-                      transition: "all 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = "0 4px 14px rgba(234, 179, 8, 0.2)";
-                      e.currentTarget.style.transform = "translateY(-1px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(234, 179, 8, 0.12)";
-                      e.currentTarget.style.transform = "translateY(0)";
+                      transition: "all 0.15s ease",
                     }}
                   >
-                    {/* Line 1: email */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                    {/* Email */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                       <div
                         style={{
-                          width: "34px",
-                          height: "34px",
+                          width: "32px",
+                          height: "32px",
                           borderRadius: "8px",
                           background: "white",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
                           flexShrink: 0,
                         }}
                       >
-                        <Mail size={16} color="#ca8a04" />
+                        <Mail size={16} color="#d97706" />
                       </div>
+
                       <div
                         style={{
                           fontSize: "14px",
                           color: "#92400e",
-                          fontWeight: 700,
+                          fontWeight: 600,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
+                          flex: 1,
                         }}
+                        title={inv.email}
                       >
                         {inv.email}
                       </div>
                     </div>
 
-                    {/* Line 2: role + copy link on one line */}
+                    {/* Role + Copy Link */}
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "flex-start",
-                        gap: "10px",
-                        paddingLeft: "44px",
+                        gap: "8px",
                         flexWrap: "wrap",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "6px 12px",
-                          background: roleColors.bg,
-                          color: roleColors.color,
-                          borderRadius: "999px",
-                          fontWeight: 700,
-                          fontSize: "11px",
-                          border: `1px solid ${roleColors.border}`,
-                          flexShrink: 0,
-                        }}
-                      >
+                      <div style={badgeStyle(roleColors, false)}>
                         {getRoleIcon(inv.role)}
                         {inv.role.toLowerCase()}
                       </div>
+
                       <button
                         type="button"
                         onClick={() => handleCopyInviteLink(inv)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          padding: "8px 12px",
-                          fontSize: "12px",
-                          borderRadius: "999px",
-                          border: "1px solid #f5e3c3",
-                          background: "#fff7ed",
-                          color: "#b45309",
-                          cursor: "pointer",
-                          fontWeight: 700,
-                          boxShadow: "0 2px 6px rgba(180, 83, 9, 0.15)",
-                          transition: "all 0.15s ease",
-                          flexShrink: 1,
-                          whiteSpace: "nowrap",
-                        }}
+                        style={badgeStyle(copyColors, true)}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "translateY(-1px)";
-                          e.currentTarget.style.boxShadow = "0 4px 10px rgba(180, 83, 9, 0.22)";
+                          e.currentTarget.style.filter = "brightness(0.95)";
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = "translateY(0)";
-                          e.currentTarget.style.boxShadow = "0 2px 6px rgba(180, 83, 9, 0.15)";
+                          e.currentTarget.style.filter = "none";
                         }}
                         title="Copy invite link"
                       >
-                        <LinkIcon size={14} />
-                        Copy link
+                        <LinkIcon size={13} />
+                        copy link
                       </button>
                     </div>
 
-                    {/* Line 3: expiry */}
+                    {/* Expiry */}
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
                         gap: "6px",
-                        color: "#a16207",
+                        color: "#b45309",
                         fontSize: "12px",
-                        paddingLeft: "44px",
+                        fontWeight: 500,
                       }}
                     >
-                      <Calendar size={12} />
+                      <Calendar size={13} />
                       Expires {formatDate(inv.expiresAt)}
                     </div>
                   </div>
@@ -1069,7 +1178,6 @@ export function WorkspaceMembersCard() {
           )}
         </div>
       )}
-
       {/* Invite Modal */}
       {inviteOpen && (
         <div
