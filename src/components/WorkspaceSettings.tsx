@@ -30,7 +30,7 @@ function normalizeApiError(err: any): string {
   return message;
 }
 
-export function WorkspaceSettings() {
+export function WorkspaceSettings({ isExpanded }: { isExpanded?: boolean }) {
   const { workspaces, activeWorkspaceId, setActiveWorkspace } = useWorkspaceStore();
   const { callApi } = useAuth();
   const { reload: reloadWorkspaces } = useWorkspaces();
