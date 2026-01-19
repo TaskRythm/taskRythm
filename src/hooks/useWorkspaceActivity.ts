@@ -26,7 +26,6 @@ export function useWorkspaceActivity() {
       const data = await fetchWorkspaceActivity(callApi, activeWorkspaceId);
       setActivity(data);
     } catch (err: any) {
-      console.error("Error loading activity", err);
       // Suppress error if workspace is new (no activity yet)
       if (err?.status !== 403 && err?.status !== 404) {
         setError(err.message || "Failed to load activity");

@@ -19,6 +19,7 @@ export default function Navigation() {
   const { user, isAuthenticated, logout, loginWithRedirect } = useAuth0();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [hoveredIcon, setHoveredIcon] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -345,8 +346,12 @@ export default function Navigation() {
                   overflow: 'hidden'
                 }}>
                   <div style={{ padding: '12px 0' }}>
-                    <Link href="/profile" style={{ textDecoration: 'none' }}>
-                      <div style={{
+                    <div 
+                      onClick={() => {
+                        setShowComingSoonModal(true);
+                        setShowUserDropdown(false);
+                      }}
+                      style={{
                         padding: '10px 16px',
                         color: '#1e293b',
                         fontSize: '14px',
@@ -363,9 +368,12 @@ export default function Navigation() {
                         <User size={16} />
                         Profile
                       </div>
-                    </Link>
-                    <Link href="/settings" style={{ textDecoration: 'none' }}>
-                      <div style={{
+                    <div 
+                      onClick={() => {
+                        setShowComingSoonModal(true);
+                        setShowUserDropdown(false);
+                      }}
+                      style={{
                         padding: '10px 16px',
                         color: '#1e293b',
                         fontSize: '14px',
@@ -382,7 +390,6 @@ export default function Navigation() {
                         <Settings size={16} />
                         Settings
                       </div>
-                    </Link>
                     <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }}></div>
                     <button 
                       onClick={() => {
@@ -557,6 +564,70 @@ export default function Navigation() {
                 }}
               >Log Out</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Coming Soon Modal */}
+      {showComingSoonModal && (
+        <div style={{
+          position: 'fixed', 
+          inset: 0, 
+          background: 'rgba(0,0,0,0.5)', 
+          backdropFilter: 'blur(4px)', 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          zIndex: 2000
+        }}>
+          <div style={{ 
+            background: 'white', 
+            padding: '40px', 
+            borderRadius: '16px', 
+            width: '100%', 
+            maxWidth: '420px', 
+            textAlign: 'center', 
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+            animation: 'slideUp 0.3s ease'
+          }}>
+            <div style={{ 
+              width: '64px', 
+              height: '64px', 
+              background: '#fef3c7', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              margin: '0 auto 16px',
+              boxShadow: '0 4px 12px rgba(251, 191, 36, 0.2)'
+            }}>
+              <Settings size={32} color="#f59e0b" />
+            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Coming Soon</h2>
+            <p style={{ color: '#64748b', marginBottom: '32px', fontSize: '14px', lineHeight: '1.6' }}>Profile and settings are currently under development. Check back soon for more options!</p>
+            <button 
+              onClick={() => setShowComingSoonModal(false)} 
+              style={{ 
+                width: '100%', 
+                padding: '12px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: '#3b82f6', 
+                fontWeight: '600', 
+                color: 'white', 
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#2563eb';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#3b82f6';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+              }}
+            >Got it</button>
           </div>
         </div>
       )}
