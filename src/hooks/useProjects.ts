@@ -33,7 +33,6 @@ export function useProjects() {
       const data = await fetchProjects(callApi, activeWorkspaceId);
       setProjects(data);
     } catch (err: any) {
-      console.error('Error loading projects', err);
       // Suppress error if workspace is new (no projects yet)
       if (err?.status !== 403 && err?.status !== 404) {
         setError(err.message || 'Failed to load projects');

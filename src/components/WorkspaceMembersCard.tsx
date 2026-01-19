@@ -679,23 +679,6 @@ export function WorkspaceMembersCard({ isExpanded, onExpandAction }: { isExpande
           Active Members
         </h4>
 
-        {membersError && (
-          <div
-            style={{
-              fontSize: "13px",
-              color: "#ef4444",
-              background: "#fef2f2",
-              padding: "12px 16px",
-              borderRadius: "10px",
-              border: "1px solid #fecaca",
-              marginBottom: "12px",
-              fontWeight: 600,
-            }}
-          >
-            {membersError}
-          </div>
-        )}
-
         {membersLoading ? (
           <div
             style={{

@@ -402,11 +402,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 </div>
                 <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#1e293b", margin: 0, letterSpacing: "-0.2px" }}>Recent Activity</h3>
               </div>
-              {activityError && (
-                <div style={{ fontSize: "13px", color: "#ef4444", marginBottom: "12px", padding: "10px", background: "#fef2f2", borderRadius: "8px" }}>
-                  {activityError}
-                </div>
-              )}
+
               {activityLoading ? (
                 <div style={{ textAlign: "center", padding: "20px", color: "#64748b", fontSize: "13px" }}>Loading...</div>
               ) : activity.length === 0 ? (
@@ -458,11 +454,6 @@ export default function Dashboard({ user }: DashboardProps) {
               </span>
             </div>
 
-            {projectsError && (
-              <div style={{ marginBottom: "16px", fontSize: "14px", color: "#ef4444", background: "#fef2f2", padding: "12px 16px", borderRadius: "10px", border: "1px solid #fecaca" }}>
-                {projectsError}
-              </div>
-            )}
 
             {!projectsLoading && enrichedProjects.length === 0 && (
               <div style={{ background: "white", padding: "40px", borderRadius: "16px", border: "2px dashed #e2e8f0", textAlign: "center", color: "#64748b" }}>

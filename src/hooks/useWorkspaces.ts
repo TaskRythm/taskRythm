@@ -91,7 +91,6 @@ export function useWorkspaces() {
 
       setError(null);
     } catch (err: any) {
-      console.error("Failed to load workspaces", err);
       // Only set error if it's not a permission/not found error (new users have no workspaces)
       if (err?.status !== 403 && err?.status !== 404) {
         setError(err?.message || "Failed to load workspaces");
