@@ -346,8 +346,12 @@ export default function Navigation() {
                   overflow: 'hidden'
                 }}>
                   <div style={{ padding: '12px 0' }}>
-                    <Link href="/profile" style={{ textDecoration: 'none' }}>
-                      <div style={{
+                    <div 
+                      onClick={() => {
+                        setShowComingSoonModal(true);
+                        setShowUserDropdown(false);
+                      }}
+                      style={{
                         padding: '10px 16px',
                         color: '#1e293b',
                         fontSize: '14px',
@@ -364,7 +368,6 @@ export default function Navigation() {
                         <User size={16} />
                         Profile
                       </div>
-                    </Link>
                     <div 
                       onClick={() => {
                         setShowComingSoonModal(true);
@@ -601,7 +604,7 @@ export default function Navigation() {
               <Settings size={32} color="#f59e0b" />
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Coming Soon</h2>
-            <p style={{ color: '#64748b', marginBottom: '32px', fontSize: '14px', lineHeight: '1.6' }}>Settings are currently under development. Check back soon for more options!</p>
+            <p style={{ color: '#64748b', marginBottom: '32px', fontSize: '14px', lineHeight: '1.6' }}>Profile and settings are currently under development. Check back soon for more options!</p>
             <button 
               onClick={() => setShowComingSoonModal(false)} 
               style={{ 
