@@ -31,7 +31,15 @@ export class WorkspacesController {
     const picture = userPayload.picture;
 
     const user = await this.workspacesService.ensureUser(auth0Id, email, name, picture);
-    const memberships = await this.workspacesService.findAllForUser(user.id);
+    let memberships = await this.workspacesService.findAllForUser(user.id);
+
+    // Auto-create default workspace for new users
+    if (memberships.length === 0) {
+      const defaultWorkspace = await this.workspacesService.createForUser(user.id, {
+        name: `${name ? name.split(' ')[0] : 'My'}'s Workspace`,
+      });
+      memberships = await this.workspacesService.findAllForUser(user.id);
+    }
 
     return memberships.map((m) => ({
       workspaceId: m.workspaceId,
