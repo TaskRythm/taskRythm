@@ -92,7 +92,12 @@ export function useWorkspaces() {
       setError(null);
     } catch (err: any) {
       console.error("Failed to load workspaces", err);
-      setError(err?.message || "Failed to load workspaces");
+      // Only set error if it's not a permission/not found error (new users have no workspaces)
+      if (err?.status !== 403 && err?.status !== 404) {
+        setError(err?.message || "Failed to load workspaces");
+      } else {
+        setError(null);
+      }
     } finally {
       setLoading(false);
     }

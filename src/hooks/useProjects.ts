@@ -22,7 +22,10 @@ export function useProjects() {
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
-    if (!activeWorkspaceId || !isAuthenticated) return;
+    if (!activeWorkspaceId || !isAuthenticated) {
+      setProjects([]);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -31,7 +34,12 @@ export function useProjects() {
       setProjects(data);
     } catch (err: any) {
       console.error('Error loading projects', err);
-      setError(err.message || 'Failed to load projects');
+      // Suppress error if workspace is new (no projects yet)
+      if (err?.status !== 403 && err?.status !== 404) {
+        setError(err.message || 'Failed to load projects');
+      } else {
+        setError(null);
+      }
     } finally {
       setLoading(false);
     }

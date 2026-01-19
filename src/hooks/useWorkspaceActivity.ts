@@ -15,7 +15,10 @@ export function useWorkspaceActivity() {
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
-    if (!activeWorkspaceId || !isAuthenticated) return;
+    if (!activeWorkspaceId || !isAuthenticated) {
+      setActivity([]);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -24,7 +27,12 @@ export function useWorkspaceActivity() {
       setActivity(data);
     } catch (err: any) {
       console.error("Error loading activity", err);
-      setError(err.message || "Failed to load activity");
+      // Suppress error if workspace is new (no activity yet)
+      if (err?.status !== 403 && err?.status !== 404) {
+        setError(err.message || "Failed to load activity");
+      } else {
+        setError(null);
+      }
     } finally {
       setLoading(false);
     }
